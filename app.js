@@ -57,7 +57,7 @@ const addList=(k,v)=>{v=(v||"").trim();if(v&&!(S.lists[k]||[]).includes(v))run((
 
 // ---------- start (ไม่มีล็อกอิน) ----------
 S.role="editor";
-const setWho=n=>{$("#who").textContent=[...n][0]||"?";$("#who").title=`${n} (กดเพื่อเปลี่ยนชื่อ)`};
+const setWho=n=>{$("#who").innerHTML=`<i>${e([...n][0]||"?")}</i><span>${e(n)}</span>`;$("#who").title="กดเพื่อเปลี่ยนชื่อ"};
 const askName=()=>{const n=(prompt("ใส่ชื่อของคุณ (ใช้แสดงว่าใครแก้ไขล่าสุด)",S.name||"")||S.name||"ไม่ระบุชื่อ").trim();S.name=n;try{localStorage.setItem("uname",n)}catch{}setWho(n)};
 try{S.name=localStorage.getItem("uname")||""}catch{}
 if(S.name)setWho(S.name);else askName();
@@ -67,20 +67,33 @@ S.gl.push(onSnapshot(collection(db,"projects"),s=>{S.projects=s.docs.map(d=>({id
 S.gl.push(onSnapshot(doc(db,"settings","lists"),s=>{S.lists=s.data()||{};
  const fill=(id,a)=>$(id).innerHTML=[...new Set(a)].map(x=>`<option value="${e(x)}">`).join("");
  fill("#dln",[...(S.lists.names||[]),...S.projects.map(p=>p.name)]);fill("#dla",[...AG,...(S.lists.agencies||[])]);fill("#dlp",S.lists.payers||[])}));
-$("#nhome").onclick=showHome;
+$("#nhome").onclick=()=>showHome("dash");$("#nlist").onclick=()=>showHome("list");
 
 // ---------- home ----------
-function showHome(){
- S.pid=null;S.cur=null;S.subs.forEach(f=>f());S.subs=[];S.exp=[];S.inst=[];
- main.innerHTML=`<header class="top"><div><h1>โครงการทั้งหมด</h1><p class="sub">ภาพรวมโครงการ หจก.สรรเสริญการสร้าง</p></div>
- <div class="row"><button class="btn" id="hpdf">Export PDF</button><button class="btn" id="hcsv">Export CSV</button><button class="btn pri ed" id="addp">+ เพิ่มโครงการใหม่</button></div></header>
- <div class="printonly"><h2>รายงานสรุปโครงการ · ${thd(today())}</h2></div>
+function showHome(v){
+ S.view=v||S.view||"dash";S.pid=null;S.cur=null;S.subs.forEach(f=>f());S.subs=[];S.exp=[];S.inst=[];
+ $$("nav a").forEach(x=>x.classList.toggle("on",x.dataset.v==S.view));
+ const tile=(id,t,s)=>`<button class="tile ed" id="${id}">${t}<small>${s}</small></button>`;
+ main.innerHTML=S.view=="dash"?`<header class="top"><div><h1>แดชบอร์ด</h1><p class="sub">ภาพรวมโครงการก่อสร้างทั้งหมด</p></div><div class="row"><button class="btn" id="hpdf">Export PDF</button></div></header>
+ <div class="printonly"><h2>รายงานสรุปโครงการ · ${thd(today())}</h2></div><div id="sum" class="kpis"></div>
+ <div class="dg"><div class="box"><h2>ทางลัด</h2><div class="tiles">${tile("addp","+ เพิ่มโครงการ","สร้างโครงการใหม่")}${tile("golist","รายการโครงการ","ดูการ์ดทั้งหมด")}${tile("hcsv","Export CSV","สำรองข้อมูลโครงการ")}${tile("seed","โหลดข้อมูลตัวอย่าง","ดูหน้าตาโครงการ 2 โครงการ")}${tile("clr","ล้างข้อมูลตัวอย่าง","ลบเฉพาะโครงการตัวอย่าง")}</div></div>
+ <div class="box"><h2>แจ้งเตือนสัญญา</h2><div id="alerts"></div></div></div>
+ <div class="box sec"><h2>โครงการแยกตามสถานะ</h2><div id="bys"></div></div>`
+ :`<header class="top"><div><h1>รายการโครงการ</h1><p class="sub">เลือกโครงการเพื่อดูรายละเอียด</p></div><div class="row"><button class="btn" id="hpdf">Export PDF</button><button class="btn" id="hcsv">Export CSV</button><button class="btn pri ed" id="addp">+ เพิ่มโครงการใหม่</button></div></header>
  <div id="sum" class="kpis"></div>
  <div class="bar"><input class="f" id="q" placeholder="🔍 ค้นหาชื่อโครงการ / เลขที่สัญญา / หน่วยงาน"><select class="f" id="fs"><option value="">ทุกสถานะ</option>${Object.keys(STAT).map(s=>`<option>${s}</option>`).join("")}</select><select class="f" id="fa"></select></div>
- <div id="cards" class="cards"></div>
- <div class="row ed" style="margin-top:24px"><button class="btn" id="seed">โหลดข้อมูลตัวอย่าง 2 โครงการ</button><button class="btn dng" id="clr">ล้างข้อมูลตัวอย่าง</button></div>`;
+ <div id="cards" class="cards"></div>`;
  paint()}
-function paintHome(){
+const SC={blue:"#2f6bff",amber:"#ff9a3d",green:"#17b26a",violet:"#8a5cf6",gray:"#94a3b8",slate:"#475569"};
+function paintDashHome(){
+ const ps=S.projects;if(!$("#sum"))return;
+ $("#sum").innerHTML=[["โครงการทั้งหมด",ps.length],["กำลังดำเนินการ",ps.filter(p=>ACTIVE.includes(p.status)).length],["เสร็จแล้ว",ps.filter(p=>DONE.includes(p.status)).length],["วงเงินสัญญารวม",baht(sum(ps,"budget"))],["ยอดเบิกรวม",baht(sum(ps,"drawn"))]].map(([l,v])=>`<div class="k"><b>${v}</b><span>${l}</span></div>`).join("");
+ const al=ps.filter(p=>ACTIVE.includes(p.status)&&eff(p)).map(p=>({p,l:diff(today(),eff(p))})).filter(x=>x.l<30).sort((a,b)=>a.l-b.l);
+ $("#alerts").innerHTML=al.map(({p,l})=>`<div class="al ${l<0?"r":"a"}" data-open="${p.id}"><b>${e(p.name||"(ไม่มีชื่อ)")}</b><br>${l<0?`เกินกำหนด ${-l} วัน`:`เหลือ ${l} วัน`} · สิ้นสุด ${thd(eff(p))}</div>`).join("")||`<div class="al ok">${!S.loaded?"กำลังโหลด…":ps.length?"ไม่มีสัญญาใกล้หมดหรือเกินกำหนด ✓":"ยังไม่มีโครงการ กด “โหลดข้อมูลตัวอย่าง” เพื่อดูหน้าตารายละเอียดโครงการ"}</div>`;
+ $("#bys").innerHTML=Object.keys(STAT).map(s=>{const n=ps.filter(p=>p.status==s).length;return`<div class="bs"><span>${s}</span><div style="background:#eef1f7;border-radius:7px"><i style="width:${ps.length?n/ps.length*100:0}%;background:${SC[STAT[s]]}"></i></div><b>${n}</b></div>`}).join("");
+ applyRole()}
+function paintHome(){S.view=="dash"?paintDashHome():paintList()}
+function paintList(){
  if(!$("#cards"))return;
  const q=$("#q").value.trim().toLowerCase(),fs=$("#fs").value;
  const ags=[...new Set(S.projects.map(p=>p.agency).filter(Boolean))],fa0=$("#fa").value;
@@ -167,6 +180,7 @@ function onP(el){
 main.addEventListener("click",async ev=>{const t=ev.target,id=t.id;
  const open=t.closest("[data-open]");if(open)return openProject(open.dataset.open);
  if(id=="back")return showHome();
+ if(id=="golist")return showHome("list");
  if(id=="addp"){const nid=doc(collection(db,"projects")).id;await run(()=>setDoc(doc(db,"projects",nid),{name:"",agency:"",status:"รอลงนามสัญญา",budget:0,drawn:0,ext:[],...stamp()}));return openProject(nid)}
  if(id=="addx"){S.cur.ext=[...(S.cur.ext||[]),{days:0,reason:"",date:""}];recalc(S.cur);patch({ext:S.cur.ext});return paint()}
  if(id=="addi"){const n=doc(collection(db,"projects",S.pid,"installments"));return run(()=>setDoc(n,{no:S.inst.length+1,pct:"",amt:0,st:"รอเบิก",...stamp()}))}
