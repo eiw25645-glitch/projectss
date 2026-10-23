@@ -2,14 +2,61 @@
 <html lang="th"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>โครงการ หจก.สรรเสริญการสร้าง</title>
-<meta name="theme-color" content="#0a1626">
+<meta name="theme-color" content="#ffffff">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="modulepreload" href="app.js?v=4"><link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500&display=swap" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="style.css?v=4"></head><body>
+<link rel="modulepreload" href="app.js?v=6"><link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'">
+<style>
+:root{--ln:#e5e7eb;--tx:#111827;--mu:#6b7280;--bl:#2563eb;--rd:#dc2626;--gn:#059669;--am:#d97706}
+*{box-sizing:border-box}
+body{margin:0;font:400 16px/1.6 "IBM Plex Sans Thai","Noto Sans Thai","Leelawadee UI",Tahoma,sans-serif;background:#fff;color:var(--tx);-webkit-font-smoothing:antialiased}
+.hide{display:none!important}.red{color:var(--rd);font-weight:600}
+header{position:sticky;top:0;z-index:5;background:#ffffffee;backdrop-filter:blur(8px);display:flex;gap:12px;align-items:center;padding:14px 24px;border-bottom:1px solid var(--ln);flex-wrap:wrap}
+.ht{margin-right:auto}.ht h1{margin:0;font-size:1.5em;font-weight:700;line-height:1.3}.ht small{color:var(--mu)}
+#who{font-size:.85em;background:#f3f4f6;border-radius:999px;padding:3px 14px}.stt{font-size:.8em;color:var(--mu)}.stt:empty{display:none}
+main{max-width:1120px;margin:0 auto;padding:20px 20px 56px}
+label{display:grid;gap:4px;font-size:.84em;font-weight:500;color:var(--mu)}
+input,select{font:inherit;color:var(--tx);padding:9px 12px;border:1px solid var(--ln);border-radius:10px;background:#fff;width:100%;min-width:0;transition:border-color .15s,box-shadow .15s}
+input:hover,select:hover{border-color:#cbd5e1}
+input:disabled,select:disabled{background:transparent;border-color:transparent;padding-left:0;opacity:1}
+input:focus,select:focus{outline:none;border-color:var(--bl);box-shadow:0 0 0 3px #2563eb26}
+button:focus-visible,a:focus-visible{outline:2px solid var(--bl);outline-offset:2px}
+.btn{font:inherit;font-weight:500;font-size:.92rem;background:var(--bl);color:#fff;border:1px solid var(--bl);border-radius:10px;padding:8px 18px;cursor:pointer;text-decoration:none;display:inline-block;transition:background .15s}
+.btn:hover{background:#1d4ed8}.btn.gh{background:#fff;color:var(--tx);border-color:var(--ln)}.btn.gh:hover{background:#f9fafb;border-color:#cbd5e1}
+.btn.dng{background:#fff;color:var(--rd);border-color:#fecaca}.btn.dng:hover{background:#fef2f2}.btn.sm{padding:4px 14px;font-size:.84rem}
+.ro .ed{display:none!important}
+.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:20px}
+.kpi{background:#fff;border:1px solid var(--ln);border-radius:14px;padding:18px 20px}
+.kl,.kpi small{display:flex;gap:8px;align-items:center;color:var(--mu);font-size:.9em}.ic{width:18px;height:18px;flex:none}
+.kpi b{display:block;font-size:1.7em;font-weight:700;line-height:1.3;margin:6px 0 2px;overflow-wrap:anywhere}
+.ks{font-size:.82em}.gy{color:var(--mu)}.gn{color:var(--gn)}.bl{color:var(--bl)}.am{color:var(--am)}
+section.box{background:#fff;border:1px solid var(--ln);border-radius:14px;padding:20px 22px;margin:20px 0}
+h2{font-size:1.08em;font-weight:700;margin:0 0 14px}.sd{margin:-10px 0 14px;color:var(--mu);font-size:.88em}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.tile{font:inherit;text-align:left;cursor:pointer;background:var(--b2);border:1px solid var(--bd);border-radius:12px;padding:16px;color:var(--tx);transition:transform .15s}
+.tile:hover{transform:translateY(-2px)}.tile b{display:block;font-weight:600}.tile small{color:var(--mu)}
+.ti{width:36px;height:36px;border:1px solid var(--bd);background:#fff;border-radius:8px;display:grid;place-items:center;margin-bottom:22px;color:var(--c)}
+.t1{--b2:#eaf4ff;--bd:#bfdcff;--c:#2563eb}.t2{--b2:#f1eeff;--bd:#d8d0ff;--c:#7c3aed}.t3{--b2:#eaf8ee;--bd:#bfe6c9;--c:#059669}.t4{--b2:#fff5df;--bd:#fbdca0;--c:#d97706}
+.bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}.bar input{flex:2 1 220px}.bar select{flex:1 1 160px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px}
+.card{background:#fff;border:1px solid var(--ln);border-radius:14px;padding:20px;text-decoration:none;color:inherit;display:block;transition:box-shadow .2s,border-color .2s}
+.card:hover{border-color:#cbd5e1;box-shadow:0 10px 28px -14px #0f172a40}
+.card h3{font-size:1.05em;font-weight:600;margin:10px 0 2px}.card p{margin:2px 0;font-size:.9em;color:#4b5563}
+.bd{padding:1px 12px;border-radius:999px;font-size:.78em;font-weight:600;white-space:nowrap;display:inline-block}
+.pg{height:6px;border-radius:3px;background:#eef0f3;margin:12px 0 8px;overflow:hidden}.pg i{display:block;height:100%;background:var(--bl);border-radius:3px}.pg.red i{background:var(--rd)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;padding:12px 0;border-bottom:1px solid #f1f3f5;align-items:end}
+.top{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px}.top h1{font-size:1.5em;font-weight:700;margin:0 auto 0 8px}
+.cat{display:grid;grid-template-columns:150px 1fr 120px;gap:12px;align-items:center;font-size:.9em;margin:6px 0}
+.cat i{display:block;height:8px;background:var(--bl);border-radius:4px}.cat span:last-child{text-align:right}
+.tot{background:#f8fafc;border:1px solid var(--ln);border-radius:10px;padding:10px 14px;margin-top:12px;font-weight:600}
+.small{font-size:.85em;color:var(--mu);font-weight:400}.tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:24px}
+@media(max-width:560px){body{font-size:15.5px}header{padding:12px 14px}main{padding:14px 12px 40px}.sum{grid-template-columns:1fr 1fr;gap:10px}.kpi{padding:14px}.cat{grid-template-columns:96px 1fr 96px}section.box{padding:16px}}
+@media print{@page{size:A4;margin:12mm}.np,.ed,.tools,.tiles{display:none!important}body{font-size:12pt}section.box,.kpi{break-inside:avoid}input,select{border:0;padding:0;appearance:none;-webkit-appearance:none}}
+</style></head><body>
 <div id="app">
-<header class="np"><b>หจก.สรรเสริญการสร้าง</b><span id="st" class="stt"></span><span id="who"></span><span class="stt">v4</span></header>
+<header class="np"><div class="ht"><h1 id="ttl">แดชบอร์ด</h1><small id="sub">หจก.สรรเสริญการสร้าง</small></div><span id="st" class="stt"></span><span id="who"></span><span class="stt">v6</span></header>
 <main id="main"></main></div>
 <div id="dls"></div>
-<script type="module" src="app.js?v=4"></script>
+<script type="module" src="app.js?v=6"></script>
 </body></html>
