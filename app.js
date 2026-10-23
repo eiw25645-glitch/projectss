@@ -14,7 +14,7 @@ const sum=(a,f)=>a.reduce((s,x)=>s+(+f(x)||0),0);
 const pct=(a,b)=>b?a/b*100:0;
 const effEnd=p=>p.end?add(p.end,sum(p.ext||[],x=>x.days)):'';
 const ST=['รอลงนามสัญญา','กำลังก่อสร้าง','หยุดชั่วคราว','ส่งมอบงานแล้ว','ตรวจรับแล้ว','ปิดโครงการ'];
-const SC=['#6b7280','#1d6fb8','#d97706','#7c3aed','#059669','#374151'];
+const SC=['#8a8f98','#2c5282','#b7791f','#6b4f9e','#2f7d5b','#3d4450'];
 const AG=['กรมโยธาธิการและผังเมือง','เทศบาล','กรมทางหลวง','อบต.','อื่นๆ'];
 const CAT=['วัสดุก่อสร้าง','ค่าแรง','ค่าเครื่องจักร-ขนส่ง','ค่าเช่า','ค่าน้ำมัน','ค่าธรรมเนียม-ภาษี','เบ็ดเตล็ด','อื่นๆ'];
 const MT=['เงินสด','โอนเงิน','เช็ค','เครดิต-ค้างจ่าย'],IS=['รอเบิก','ส่งเบิกแล้ว','ได้รับเงินแล้ว'],ES=['จ่ายแล้ว','ค้างจ่าย'];
@@ -38,7 +38,7 @@ const writeP=async(id,p)=>{await setDoc(doc(db,'projects',id),{...p,...stamp()},
  for(const[f,k]of[['name','names'],['agency','agencies']])if(p[f])await setDoc(doc(db,'settings','lists'),{[k]:arrayUnion(p[f])},{merge:true})};
 const writeS=(c,pid,id)=>async p=>{await setDoc(doc(db,'projects',pid,c,id),{...p,...stamp()},{merge:true});await setDoc(doc(db,'projects',pid),stamp(),{merge:true});
  if(p.payer)await setDoc(doc(db,'settings','lists'),{payers:arrayUnion(p.payer)},{merge:true})};
-function start(){const sn=(q,f)=>onSnapshot(q,f,e=>{console.error(e);setSt('err')});
+function start(){const sn=(q,f)=>onSnapshot(q,f,e=>{console.error(e);setSt('err');S.err=e.code||String(e);if(!S.loaded)wait()});
  S.un=[sn(collection(db,'projects'),s=>{S.P=s.docs.map(d=>({...d.data(),id:d.id}));S.loaded=true;render()}),
  sn(collectionGroup(db,'installments'),s=>{S.I=s.docs.map(d=>({...d.data(),id:d.id,pid:d.ref.parent.parent.id}));render()}),
  sn(collectionGroup(db,'expenses'),s=>{S.E=s.docs.map(d=>({...d.data(),id:d.id,pid:d.ref.parent.parent.id}));render()}),
@@ -144,6 +144,12 @@ async function seed(){const bt=writeBatch(db),t=today(),sm={sample:true,...stamp
 // ---------- เริ่มทำงานทันที (ไม่มีหน้าล็อกอิน) ----------
 S.name=(localStorage.getItem('uname')||prompt('พิมพ์ชื่อของคุณ (ใช้แสดงว่าใครแก้ไขล่าสุด)')||'ไม่ระบุชื่อ').trim();
 localStorage.setItem('uname',S.name);
-const who=$('#who');who.textContent='👤 '+S.name;who.title='กดเพื่อเปลี่ยนชื่อ';who.style.cursor='pointer';
-who.onclick=()=>{const n=prompt('เปลี่ยนชื่อ',S.name);if(n&&n.trim()){S.name=n.trim();localStorage.setItem('uname',S.name);who.textContent='👤 '+S.name}};
+const who=$('#who');who.textContent=S.name;who.title='กดเพื่อเปลี่ยนชื่อ';who.style.cursor='pointer';
+who.onclick=()=>{const n=prompt('เปลี่ยนชื่อ',S.name);if(n&&n.trim()){S.name=n.trim();localStorage.setItem('uname',S.name);who.textContent=S.name}};
 start();route();
+function wait(){if(S.loaded)return;const bad=String(firebaseConfig.projectId||'').includes('ใส่');
+ $('#main').innerHTML=`<section class="box"><h2>${bad||S.err?'เชื่อมต่อฐานข้อมูลไม่ได้':'กำลังโหลดข้อมูล…'}</h2>`+
+ (bad?'<p class="red">ยังไม่ได้ใส่ค่า firebaseConfig ในไฟล์ firebase-config.js</p>':'')+
+ (S.err?`<p class="red">รหัสข้อผิดพลาด: ${esc(S.err)}</p>${S.err==='permission-denied'?'<p>ยังไม่ได้ตั้ง Rules ให้อ่าน/เขียนได้ (Firestore → Rules → Publish)</p>':''}`:'')+
+ '<p class="small">ตรวจสอบ: 1) firebase-config.js ใส่ค่าครบ 2) สร้าง Firestore Database แล้ว 3) ตั้ง Rules แล้ว 4) กด Ctrl+F5 แล้วเปิด Console (F12) ดูข้อความสีแดง</p></section>'}
+wait();setTimeout(()=>{if(!S.loaded&&!S.err){S.err='หมดเวลารอ (ไม่พบ Firestore ตาม projectId หรือยังไม่ได้สร้างฐานข้อมูล)';wait()}},8000);
