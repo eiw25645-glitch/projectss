@@ -1,7 +1,7 @@
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {getFirestore,collection,collectionGroup,doc,getDoc,setDoc,addDoc,deleteDoc,onSnapshot,arrayUnion,writeBatch} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {getFirestore,initializeFirestore,persistentLocalCache,persistentMultipleTabManager,collection,collectionGroup,doc,getDoc,setDoc,addDoc,deleteDoc,onSnapshot,arrayUnion,writeBatch} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {firebaseConfig} from "./firebase-config.js";
-const app=initializeApp(firebaseConfig),db=getFirestore(app);
+const app=initializeApp(firebaseConfig),db=(()=>{try{return initializeFirestore(app,{localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})})}catch{return getFirestore(app)}})();
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const baht=n=>(+n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -14,7 +14,7 @@ const sum=(a,f)=>a.reduce((s,x)=>s+(+f(x)||0),0);
 const pct=(a,b)=>b?a/b*100:0;
 const effEnd=p=>p.end?add(p.end,sum(p.ext||[],x=>x.days)):'';
 const ST=['รอลงนามสัญญา','กำลังก่อสร้าง','หยุดชั่วคราว','ส่งมอบงานแล้ว','ตรวจรับแล้ว','ปิดโครงการ'];
-const SC=['#8a8f98','#2c5282','#b7791f','#6b4f9e','#2f7d5b','#3d4450'];
+const SC=['#6b7686','#2f6db0','#c58a1f','#8a63c4','#2f9468','#566074'];
 const AG=['กรมโยธาธิการและผังเมือง','เทศบาล','กรมทางหลวง','อบต.','อื่นๆ'];
 const CAT=['วัสดุก่อสร้าง','ค่าแรง','ค่าเครื่องจักร-ขนส่ง','ค่าเช่า','ค่าน้ำมัน','ค่าธรรมเนียม-ภาษี','เบ็ดเตล็ด','อื่นๆ'];
 const MT=['เงินสด','โอนเงิน','เช็ค','เครดิต-ค้างจ่าย'],IS=['รอเบิก','ส่งเบิกแล้ว','ได้รับเงินแล้ว'],ES=['จ่ายแล้ว','ค้างจ่าย'];
