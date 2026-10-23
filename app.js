@@ -1,171 +1,205 @@
-import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {getFirestore,initializeFirestore,persistentLocalCache,persistentMultipleTabManager,collection,collectionGroup,doc,getDoc,setDoc,addDoc,deleteDoc,onSnapshot,arrayUnion,writeBatch} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-// ===== แก้ค่าตรงนี้ตามที่ได้จาก Firebase Console (Project settings > Your apps > Web app) =====
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import{getFirestore,collection,doc,setDoc,deleteDoc,onSnapshot,getDoc,getDocs,serverTimestamp,arrayUnion,writeBatch}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+// ===== แก้เฉพาะ firebaseConfig ตรงนี้ (Firebase Console > Project settings > Your apps > Web) =====
 const firebaseConfig = {
-  apiKey: "ใส่_API_KEY",
+  apiKey: "ใส่_API_KEY_ที่นี่",
   authDomain: "ใส่_PROJECT_ID.firebaseapp.com",
   projectId: "ใส่_PROJECT_ID",
   storageBucket: "ใส่_PROJECT_ID.appspot.com",
   messagingSenderId: "ใส่_SENDER_ID",
   appId: "ใส่_APP_ID"
 };
-const app=initializeApp(firebaseConfig),db=(()=>{try{return initializeFirestore(app,{localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})})}catch{return getFirestore(app)}})();
-const $=s=>document.querySelector(s);
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const baht=n=>(+n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
-const today=()=>new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
-const fd=d=>d?new Date(d+'T00:00:00Z').toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'}):'-';
-const fdt=s=>s?new Date(s).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'}):'';
-const add=(d,n)=>{const t=new Date(d+'T00:00:00Z');t.setUTCDate(t.getUTCDate()+n);return t.toISOString().slice(0,10)};
-const diff=(a,b)=>Math.round((new Date(b)-new Date(a))/864e5);
-const sum=(a,f)=>a.reduce((s,x)=>s+(+f(x)||0),0);
-const pct=(a,b)=>b?a/b*100:0;
-const effEnd=p=>p.end?add(p.end,sum(p.ext||[],x=>x.days)):'';
-const ST=['รอลงนามสัญญา','กำลังก่อสร้าง','หยุดชั่วคราว','ส่งมอบงานแล้ว','ตรวจรับแล้ว','ปิดโครงการ'];
-const SC=['#6b7280','#2563eb','#d97706','#7c3aed','#059669','#374151'];
-const AG=['กรมโยธาธิการและผังเมือง','เทศบาล','กรมทางหลวง','อบต.','อื่นๆ'];
-const CAT=['วัสดุก่อสร้าง','ค่าแรง','ค่าเครื่องจักร-ขนส่ง','ค่าเช่า','ค่าน้ำมัน','ค่าธรรมเนียม-ภาษี','เบ็ดเตล็ด','อื่นๆ'];
-const MT=['เงินสด','โอนเงิน','เช็ค','เครดิต-ค้างจ่าย'],IS=['รอเบิก','ส่งเบิกแล้ว','ได้รับเงินแล้ว'],ES=['จ่ายแล้ว','ค้างจ่าย'];
-const PF=[['name','ชื่อโครงการ','list','names'],['agency','หน่วยงาน','list','agencies'],['agencyFull','ชื่อหน่วยงานเต็ม','text'],['site','หน้างาน (ที่ตั้ง)','text'],['amount','วงเงินในสัญญา (บาท)','number'],['contractNo','เลขที่สัญญา','text'],['contractDate','ลงวันที่','date'],['start','วันที่เริ่มสัญญา','date'],['end','วันสิ้นสุดสัญญา','date'],['days','จำนวนวัน','number'],['status','สถานะโครงการ','select',ST]];
-const XF=[['days','ขยาย (วัน)','number'],['reason','เหตุผล','text'],['date','วันที่อนุมัติ','date']];
-const IF=[['no','งวดที่','number'],['pct','% งาน','number'],['amount','จำนวนเงิน','number'],['dSubmit','วันที่ส่งเบิก','date'],['dPaid','วันที่ได้รับเงิน','date'],['status','สถานะ','select',IS],['note','หมายเหตุ','text']];
-const EF=[['date','วันที่','date'],['item','รายการ','text'],['cat','หมวด','select',CAT],['amount','จำนวนเงิน','number'],['method','วิธีจ่าย','select',MT],['payer','ผู้จ่าย','list','payers'],['payee','จ่ายให้ใคร','text'],['status','สถานะ','select',ES],['note','หมายเหตุ','text']];
-const S={role:'editor',name:'',P:[],I:[],E:[],set:{},cur:null,loaded:false,f:{q:'',st:'',ag:''},ef:{cat:'',payer:'',m:'',from:'',to:''},un:[]};
-const ro=()=>S.role!=='editor',stamp=()=>({updatedBy:S.name,updatedAt:new Date().toISOString()});
-const opts=(a,v)=>a.map(o=>`<option ${o===v?'selected':''}>${esc(o)}</option>`).join('');
-const IC={folder:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',act:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',check:'<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',bank:'<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/>',wallet:'<path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 7l12-3v3"/>',plus:'<path d="M12 5v14M5 12h14"/>',down:'<path d="M12 4v11m-5-4 5 5 5-5M5 20h14"/>',file:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',list:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>'};
-const ic=n=>`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${IC[n]}</svg>`;
-const b0=n=>(+n||0).toLocaleString('th-TH',{maximumFractionDigits:0});
-const badge=s=>{const c=SC[ST.indexOf(s)]||'#6b7280';return `<span class="bd" style="background:${c}1f;color:${c}">${esc(s)}</span>`};
-const claimed=pid=>sum(S.I.filter(i=>i.pid===pid&&i.status!=='รอเบิก'),i=>i.amount);
+/* ตั้งค่าครั้งแรก (ไม่มีระบบล็อกอิน เปิดเว็บแล้วเข้าแดชบอร์ดทันที):
+1) สร้าง Firestore Database
+2) Firestore > Rules วางกฎนี้ แล้วกด Publish:
+rules_version = '2';
+service cloud.firestore { match /databases/{db}/documents {
+  match /{document=**} { allow read, write: if true; } } }
+3) อัปโหลด index.html + app.js ขึ้น GitHub Pages
+** ใครมีลิงก์เว็บก็เข้าดู/แก้ข้อมูลได้ จึงอย่าเผยแพร่ลิงก์สาธารณะ **
+*/
+
+const app=initializeApp(firebaseConfig),db=getFirestore(app);
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],main=$("#main");
+const S={role:"viewer",name:"",projects:[],loaded:false,pid:null,cur:null,exp:[],inst:[],lists:{},gl:[],subs:[]};
+const M=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+const STAT={"รอลงนามสัญญา":"gray","กำลังก่อสร้าง":"blue","หยุดชั่วคราว":"amber","ส่งมอบงานแล้ว":"violet","ตรวจรับแล้ว":"green","ปิดโครงการ":"slate"};
+const ACTIVE=["รอลงนามสัญญา","กำลังก่อสร้าง","หยุดชั่วคราว"],DONE=["ส่งมอบงานแล้ว","ตรวจรับแล้ว","ปิดโครงการ"];
+const AG=["กรมโยธาธิการและผังเมือง","เทศบาล","กรมทางหลวง","อบต."];
+const CATS=["วัสดุก่อสร้าง","ค่าแรง","ค่าเครื่องจักร-ขนส่ง","ค่าเช่า","ค่าน้ำมัน","ค่าธรรมเนียม-ภาษี","เบ็ดเตล็ด","อื่นๆ"];
+const METH=["เงินสด","โอนเงิน","เช็ค","เครดิต-ค้างจ่าย"],PAY=["จ่ายแล้ว","ค้างจ่าย"],IST=["รอเบิก","ส่งเบิกแล้ว","ได้รับเงินแล้ว"];
+const COLS={
+ inst:[["no","number","งวดที่"],["pct","number","% งาน"],["amt","number","จำนวนเงิน"],["sent","date","วันที่ส่งเบิก"],["recv","date","วันที่ได้รับเงิน"],["st","sel","สถานะ",IST],["note","text","หมายเหตุ"]],
+ exp:[["date","date","วันที่"],["item","text","รายการ"],["cat","sel","หมวด",CATS],["amt","number","จำนวนเงิน"],["meth","sel","วิธีจ่าย",METH],["payer","dl","ผู้จ่าย"],["payee","text","จ่ายให้ใคร"],["st","sel","สถานะ",PAY],["note","text","หมายเหตุ"]]};
+const COLL={inst:"installments",exp:"expenses"};
+
+// ---------- helpers ----------
+const e=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const baht=n=>Number(n||0).toLocaleString("th-TH",{minimumFractionDigits:2,maximumFractionDigits:2});
+const thd=s=>{if(!s)return"-";const[y,m,d]=s.split("-");return`${+d} ${M[m-1]} ${+y+543}`};
+const dt=s=>new Date(s+"T00:00:00Z"),diff=(a,b)=>Math.round((dt(b)-dt(a))/864e5);
+const addD=(s,n)=>new Date(dt(s).getTime()+n*864e5).toISOString().slice(0,10);
+const today=()=>new Date().toLocaleDateString("sv");
+const num=v=>+v||0,sum=(a,f="amt")=>a.reduce((s,r)=>s+num(r[f]),0);
+const eff=p=>(p.ext?.length&&p.ext[p.ext.length-1].newEnd)||p.end||"";
+const stamp=()=>({updatedBy:S.name,updatedAt:serverTimestamp()});
+const stampTxt=p=>{const d=p.updatedAt?.toDate?.();return p.updatedBy?`แก้ไขล่าสุดโดย ${e(p.updatedBy)}${d?` เมื่อ ${thd(d.toLocaleDateString("sv"))} ${d.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"})} น.`:""}`:""};
+
 // ---------- auto-save ----------
-const T={},D={};let pend=0,bad=false;
-function setSt(s){$('#st').textContent={saving:'กำลังบันทึก…',ok:'บันทึกแล้ว ✓',err:'บันทึกไม่สำเร็จ ลองใหม่'}[s]||''}
-function qs(key,patch,fn){D[key]={...D[key],...patch};if(!T[key])pend++;clearTimeout(T[key]);bad=false;setSt('saving');
- T[key]=setTimeout(async()=>{const p=D[key];delete D[key];try{await fn(p)}catch(e){console.error(e);bad=true}delete T[key];pend--;if(!pend)setSt(bad?'err':'ok');else if(bad)setSt('err')},600)}
-async function run(fn){setSt('saving');try{await fn();setSt('ok')}catch(e){console.error(e);setSt('err')}}
-addEventListener('beforeunload',e=>{if(pend)e.preventDefault()});
-const writeP=async(id,p)=>{await setDoc(doc(db,'projects',id),{...p,...stamp()},{merge:true});
- for(const[f,k]of[['name','names'],['agency','agencies']])if(p[f])await setDoc(doc(db,'settings','lists'),{[k]:arrayUnion(p[f])},{merge:true})};
-const writeS=(c,pid,id)=>async p=>{await setDoc(doc(db,'projects',pid,c,id),{...p,...stamp()},{merge:true});await setDoc(doc(db,'projects',pid),stamp(),{merge:true});
- if(p.payer)await setDoc(doc(db,'settings','lists'),{payers:arrayUnion(p.payer)},{merge:true})};
-function start(){const sn=(q,f)=>onSnapshot(q,f,e=>{console.error(e);setSt('err');S.err=e.code||String(e);if(!S.loaded)wait()});
- S.un=[sn(collection(db,'projects'),s=>{S.P=s.docs.map(d=>({...d.data(),id:d.id}));S.loaded=true;render()}),
- sn(collectionGroup(db,'installments'),s=>{S.I=s.docs.map(d=>({...d.data(),id:d.id,pid:d.ref.parent.parent.id}));render()}),
- sn(collectionGroup(db,'expenses'),s=>{S.E=s.docs.map(d=>({...d.data(),id:d.id,pid:d.ref.parent.parent.id}));render()}),
- sn(doc(db,'settings','lists'),s=>{S.set=s.data()||{};render()})]}
-// ---------- render ----------
-let dirty=false;
-const typing=()=>{const a=document.activeElement;return a&&/INPUT|SELECT/.test(a.tagName)&&$('#main').contains(a)};
-addEventListener('hashchange',route);
-function route(){S.cur=location.hash.slice(1)||null;scrollTo(0,0);render(true)}
-$('#main').addEventListener('focusout',()=>setTimeout(()=>{if(dirty&&!typing())render()},250));
-function render(force){if(!S.loaded)return;if(!force&&typing()){dirty=true;return}dirty=false;
- const L=(k,x)=>`<datalist id="dl-${k}">${[...new Set(x)].filter(Boolean).map(v=>`<option value="${esc(v)}">`).join('')}</datalist>`;
- $('#dls').innerHTML=L('names',[...(S.set.names||[]),...S.P.map(p=>p.name)])+L('agencies',[...AG,...(S.set.agencies||[])])+L('payers',[...(S.set.payers||[]),...S.E.map(e=>e.payer)]);
- S.cur?renderDetail():renderHome()}
-function renderHome(){const P=S.P,n=P.length,act=P.filter(p=>p.status==='กำลังก่อสร้าง').length,done=P.filter(p=>['ส่งมอบงานแล้ว','ตรวจรับแล้ว','ปิดโครงการ'].includes(p.status)).length,cs=sum(P,p=>p.amount),cl=sum(S.I.filter(i=>i.status!=='รอเบิก'),i=>i.amount);
- $('#sub').textContent=`หจก.สรรเสริญการสร้าง · ภาพรวม ${n} โครงการ`;
- const K=(i,l,v,s,c)=>`<div class="kpi"><div class="kl">${ic(i)}${l}</div><b>${v}</b><div class="ks ${c}">${s}</div></div>`;
- const T=(i,c,t,s,act,x='')=>`<button class="tile ${c} ${x}" data-act="${act}"><span class="ti">${ic(i)}</span><b>${t}</b><small>${s}</small></button>`;
- $('#main').innerHTML=`<div class="sum">${K('folder','โครงการทั้งหมด',n,'ทุกสถานะ','gy')+K('act','กำลังดำเนินการ',act,pct(act,n).toFixed(0)+'% ของทั้งหมด','gn')+K('check','เสร็จแล้ว',done,pct(done,n).toFixed(0)+'% ของทั้งหมด','bl')+K('bank','วงเงินสัญญารวม',b0(cs),'บาท','gy')+K('wallet','ยอดเบิกรวม',b0(cl),pct(cl,cs).toFixed(0)+'% ของวงเงินรวม','am')}</div>
-<section class="box np"><h2>ทางลัด</h2><p class="sd">เริ่มงานที่ใช้บ่อยได้ในคลิกเดียว</p><div class="tiles">${T('plus','t1','เพิ่มโครงการใหม่','บันทึกข้อมูลโครงการใหม่','newP','ed')+T('down','t3','สำรองข้อมูล JSON','ดาวน์โหลดข้อมูลทั้งหมด','json')+T('list','t2','ส่งออก CSV โครงการ','รายการโครงการทั้งหมด','csvP')+T('file','t4','ส่งออก CSV ค่าใช้จ่าย','ค่าใช้จ่ายทุกโครงการ','csvE')}</div></section>
-<h2>โครงการทั้งหมด</h2>
-<div class="bar np"><input data-flt="q" placeholder="ค้นหาชื่อโครงการ / หน่วยงาน / เลขสัญญา" value="${esc(S.f.q)}"><select data-flt="st"><option value="">ทุกสถานะ</option>${opts(ST,S.f.st)}</select><select data-flt="ag"><option value="">ทุกหน่วยงาน</option>${opts([...new Set(P.map(p=>p.agency).filter(Boolean))],S.f.ag)}</select></div>
-<div id="hl" class="cards"></div>
-<div class="tools np ed"><label class="btn gh" style="display:inline-block;color:var(--tx);font-size:.92rem">นำเข้า JSON<input type="file" accept=".json" data-act="imp" hidden></label><button class="btn gh" data-act="seed">โหลดข้อมูลตัวอย่าง</button><button class="btn gh" data-act="unseed">ล้างข้อมูลตัวอย่าง</button></div>`;renderList()}
-function renderList(){const f=S.f,q=f.q.trim();
- const L=S.P.filter(p=>(!f.st||p.status===f.st)&&(!f.ag||p.agency===f.ag)&&(!q||[p.name,p.agencyFull,p.agency,p.site,p.contractNo].join(' ').includes(q)));
- $('#hl').innerHTML=L.map(p=>{const c=claimed(p.id),e=effEnd(p.end),left=e?diff(today(),e):null,pc=pct(c,p.amount);
- return `<a class="card" href="#${p.id}">${badge(p.status)}<h3>${esc(p.name||'(ยังไม่ตั้งชื่อ)')}</h3><p>${esc(p.agencyFull||p.agency||'')}</p><p>วงเงิน <b>${baht(p.amount)}</b> บาท</p><div class="pg"><i style="width:${Math.min(100,pc)}%"></i></div><p>เบิกสะสม ${pc.toFixed(1)}% · ${left==null?'ยังไม่กำหนดสัญญา':left<0?`<span class="red">เกินกำหนด ${-left} วัน</span>`:`เหลือ <span class="${left<30?'red':''}">${left}</span> วัน`}</p></a>`}).join('')||'<p>ยังไม่มีโครงการ กด "+ เพิ่มโครงการใหม่" เพื่อเริ่มต้น</p>'}
-function fld(c,v,a){const d=ro()?'disabled':'',[,,ty,o]=c;
- if(ty==='select')return `<select ${a} ${d}>${v?'':'<option></option>'}${opts(o,v)}</select>`;
- return `<input ${ty==='list'?`list="dl-${o}"`:`type="${ty}"`} ${ty==='number'?'step="any" inputmode="decimal"':''} value="${esc(v)}" ${a} ${d}>`}
-const cell=(t,id,c,v)=>`<label>${c[1]}${fld(c,v,`data-t="${t}" data-id="${id}" data-k="${c[0]}"`)}</label>`;
-const rowH=(t,r,cols)=>`<div class="row">${cols.map(c=>cell(t,r.id,c,r[c[0]])).join('')}<button class="btn sm dng ed np" data-act="del" data-t="${t}" data-id="${r.id}">ลบ</button></div>`;
-function renderDetail(){const p=S.P.find(x=>x.id===S.cur);if(!p){$('#main').innerHTML='<p>ไม่พบโครงการ</p><a href="#">← กลับหน้าแรก</a>';return}
- $('#sub').textContent='หจก.สรรเสริญการสร้าง · รายละเอียดโครงการ';
- const I=S.I.filter(i=>i.pid===p.id).sort((a,b)=>a.no-b.no),E=S.E.filter(x=>x.pid===p.id),c=claimed(p.id),sp=sum(E,e=>e.amount),e=effEnd(p.end),left=e?diff(today(),e):null;
- const tot=p.start&&e?diff(p.start,e)+1:0,el=p.start?Math.max(0,Math.min(tot,diff(p.start,today())+1)):0,tp=pct(el,tot);
- const cats=CAT.map(k=>[k,sum(E.filter(x=>x.cat===k),x=>x.amount)]).filter(x=>x[1]),mx=Math.max(1,...cats.map(x=>x[1]));
- let ce=p.end;const xs=(p.ext||[]).map((x,i)=>{ce=ce?add(ce,+x.days||0):'';return `<div class="small">ครั้งที่ ${i+1} → วันสิ้นสุดใหม่ ${fd(ce)}</div>${rowH('x',{...x,id:i},XF)}`}).join('');
- const profit=c-sp,ip=sum(I,i=>i.pct);
- $('#main').innerHTML=`<div class="top np"><a class="btn gh sm" href="#">← กลับหน้าแรก</a><h1>${esc(p.name||'(ยังไม่ตั้งชื่อ)')}</h1><button class="btn gh sm" data-act="print">พิมพ์สรุป A4</button><button class="btn dng sm ed" data-act="delP">ลบโครงการ</button></div>
-<p class="small">${badge(p.status)} แก้ไขล่าสุด: ${esc(p.updatedBy||'-')} · ${fdt(p.updatedAt)}</p>
-<section class="box"><h2>สรุปโครงการ</h2><div class="sum">
-<div class="kpi"><small>สัญญา ${fd(p.start)} – ${fd(e)}</small><b class="${left!=null&&left<30?'red':''}">${left==null?'-':left<0?`เกินกำหนด ${-left} วัน`:`เหลือ ${left} วัน`}</b></div>
-<div class="kpi"><small>วงเงินสัญญา</small><b>${baht(p.amount)}</b></div><div class="kpi"><small>เบิกไปแล้ว</small><b>${baht(c)}</b></div><div class="kpi"><small>คงเหลือ</small><b>${baht((+p.amount||0)-c)}</b></div>
-<div class="kpi"><small>ค่าใช้จ่ายรวม</small><b>${baht(sp)}</b></div><div class="kpi"><small>กำไร/ขาดทุนเบื้องต้น</small><b class="${profit<0?'red':''}">${baht(profit)}</b></div></div>
-<small>ระยะเวลาสัญญาที่ผ่านไป ${tp.toFixed(0)}%</small><div class="pg ${left!=null&&left<30?'red':''}"><i style="width:${tp}%"></i></div>
-${cats.map(([k,v])=>`<div class="cat"><span>${k}</span><i style="width:${v/mx*100}%"></i><span>${baht(v)}</span></div>`).join('')||'<p class="small">ยังไม่มีค่าใช้จ่าย</p>'}</section>
-<section class="box"><h2>ข้อมูลโครงการ</h2><div class="grid">${PF.map(c=>cell('p',p.id,c,p[c[0]])).join('')}</div></section>
-<section class="box"><h2>ขยายสัญญา</h2>${xs||'<p class="small">ไม่มีการขยายสัญญา</p>'}<button class="btn sm ed np" data-act="addX">+ เพิ่มการขยายสัญญา</button></section>
-<section class="box"><h2>เบิกงวด</h2>${I.map(r=>rowH('i',r,IF)).join('')}<button class="btn sm ed np" data-act="addI" style="margin-top:8px">+ เพิ่มงวด</button>
-<div class="tot">รวม ${baht(sum(I,i=>i.amount))} บาท · % งานสะสม ${ip.toFixed(1)}% · เบิกแล้ว ${pct(c,p.amount).toFixed(1)}% ของวงเงิน</div></section>
-<section class="box"><h2>ค่าใช้จ่าย</h2><div class="grid np"><label>หมวด<select data-eflt="cat"><option value="">ทั้งหมด</option>${opts(CAT,S.ef.cat)}</select></label>
-<label>ผู้จ่าย<select data-eflt="payer"><option value="">ทั้งหมด</option>${opts([...new Set(E.map(x=>x.payer).filter(Boolean))],S.ef.payer)}</select></label>
-<label>วิธีจ่าย<select data-eflt="m"><option value="">ทั้งหมด</option>${opts(MT,S.ef.m)}</select></label>
-<label>ตั้งแต่<input type="date" data-eflt="from" value="${S.ef.from}"></label><label>ถึง<input type="date" data-eflt="to" value="${S.ef.to}"></label></div>
-<div id="exb"></div><button class="btn sm ed np" data-act="addE" style="margin-top:8px">+ เพิ่มรายการ</button></section>`;renderEx()}
-function renderEx(){const p=S.cur,f=S.ef,E=S.E.filter(x=>x.pid===p&&(!f.cat||x.cat===f.cat)&&(!f.payer||x.payer===f.payer)&&(!f.m||x.method===f.m)&&(!f.from||x.date>=f.from)&&(!f.to||x.date<=f.to)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
- const by=(k,l)=>[...new Set(E.map(x=>x[k]).filter(Boolean))].map(v=>`${esc(v)} ${baht(sum(E.filter(x=>x[k]===v),x=>x.amount))}`).join(' · ')||'-';
- $('#exb').innerHTML=E.map(r=>rowH('e',r,EF)).join('')+`<div class="tot">รวม ${baht(sum(E,x=>x.amount))} บาท · <span class="red">ค้างจ่าย ${baht(sum(E.filter(x=>x.status==='ค้างจ่าย'),x=>x.amount))}</span><div class="small">แยกตามผู้จ่าย: ${by('payer')}</div><div class="small">แยกตามหมวด: ${by('cat')}</div></div>`}
+let retry=null;const deb={};
+const st=k=>{const el=$("#save");el.dataset.k=k;el.textContent={saving:"กำลังบันทึก…",ok:"บันทึกแล้ว ✓",err:"บันทึกไม่สำเร็จ ลองใหม่"}[k]};
+const run=async f=>{st("saving");retry=f;try{await f();st("ok")}catch(x){console.error(x);st("err")}};
+const later=(k,f)=>{clearTimeout(deb[k]);st("saving");deb[k]=setTimeout(()=>run(f),600)};
+$("#save").onclick=()=>{if($("#save").dataset.k=="err"&&retry)run(retry)};
+const pref=()=>doc(db,"projects",S.pid);
+const patch=o=>{Object.assign(S.cur,o);later("p"+Object.keys(o).join(),()=>setDoc(pref(),{...o,...stamp()},{merge:true}))};
+const addList=(k,v)=>{v=(v||"").trim();if(v&&!(S.lists[k]||[]).includes(v))run(()=>setDoc(doc(db,"settings","lists"),{[k]:arrayUnion(v)},{merge:true}))};
+
+// ---------- start (ไม่มีล็อกอิน) ----------
+S.role="editor";
+const askName=()=>{const n=(prompt("ใส่ชื่อของคุณ (ใช้แสดงว่าใครแก้ไขล่าสุด)",S.name||"")||S.name||"ไม่ระบุชื่อ").trim();S.name=n;try{localStorage.setItem("uname",n)}catch{}$("#who").textContent=`👤 ${n} (กดเพื่อเปลี่ยนชื่อ)`};
+try{S.name=localStorage.getItem("uname")||""}catch{}
+if(S.name)$("#who").textContent=`👤 ${S.name} (กดเพื่อเปลี่ยนชื่อ)`;else askName();
+$("#who").style.cursor="pointer";$("#who").onclick=askName;
+showHome();
+S.gl.push(onSnapshot(collection(db,"projects"),s=>{S.projects=s.docs.map(d=>({id:d.id,...d.data()}));S.loaded=true;paint()},()=>st("err")));
+S.gl.push(onSnapshot(doc(db,"settings","lists"),s=>{S.lists=s.data()||{};
+ const fill=(id,a)=>$(id).innerHTML=[...new Set(a)].map(x=>`<option value="${e(x)}">`).join("");
+ fill("#dln",[...(S.lists.names||[]),...S.projects.map(p=>p.name)]);fill("#dla",[...AG,...(S.lists.agencies||[])]);fill("#dlp",S.lists.payers||[])}));
+$("#nhome").onclick=showHome;
+
+// ---------- home ----------
+function showHome(){
+ S.pid=null;S.cur=null;S.subs.forEach(f=>f());S.subs=[];S.exp=[];S.inst=[];
+ main.innerHTML=`<header class="top"><div><h1>โครงการทั้งหมด</h1><p class="sub">ภาพรวมโครงการ หจก.สรรเสริญการสร้าง</p></div>
+ <div class="row"><button class="btn" id="hpdf">Export PDF</button><button class="btn" id="hcsv">Export CSV</button><button class="btn pri ed" id="addp">+ เพิ่มโครงการใหม่</button></div></header>
+ <div class="printonly"><h2>รายงานสรุปโครงการ · ${thd(today())}</h2></div>
+ <div id="sum" class="kpis"></div>
+ <div class="bar"><input class="f" id="q" placeholder="ค้นหาชื่อโครงการ / เลขที่สัญญา / หน่วยงาน"><select class="f" id="fs"><option value="">ทุกสถานะ</option>${Object.keys(STAT).map(s=>`<option>${s}</option>`).join("")}</select><select class="f" id="fa"></select></div>
+ <div id="cards" class="cards"></div>
+ <div class="row ed" style="margin-top:24px"><button class="btn" id="seed">โหลดข้อมูลตัวอย่าง 2 โครงการ</button><button class="btn dng" id="clr">ล้างข้อมูลตัวอย่าง</button></div>`;
+ paint()}
+function paintHome(){
+ if(!$("#cards"))return;
+ const q=$("#q").value.trim().toLowerCase(),fs=$("#fs").value;
+ const ags=[...new Set(S.projects.map(p=>p.agency).filter(Boolean))],fa0=$("#fa").value;
+ $("#fa").innerHTML=`<option value="">ทุกหน่วยงาน</option>`+ags.map(a=>`<option${a==fa0?" selected":""}>${e(a)}</option>`).join("");
+ const fa=$("#fa").value,ps=S.projects,list=ps.filter(p=>(!fs||p.status==fs)&&(!fa||p.agency==fa)&&(!q||[p.name,p.contractNo,p.agency,p.agencyFull,p.site].join(" ").toLowerCase().includes(q)));
+ $("#sum").innerHTML=[["โครงการทั้งหมด",ps.length],["กำลังดำเนินการ",ps.filter(p=>ACTIVE.includes(p.status)).length],["เสร็จแล้ว",ps.filter(p=>DONE.includes(p.status)).length],["วงเงินสัญญารวม",baht(sum(ps,"budget"))],["ยอดเบิกรวม",baht(sum(ps,"drawn"))]].map(([l,v])=>`<div class="k"><b>${v}</b><span>${l}</span></div>`).join("");
+ $("#cards").innerHTML=list.map(p=>{const end=eff(p),left=end?diff(today(),end):null,pc=num(p.budget)?Math.min(100,num(p.drawn)/num(p.budget)*100):0,warn=left!=null&&left<30&&ACTIVE.includes(p.status);
+  return`<div class="pc" data-open="${p.id}"><span class="badge ${STAT[p.status]||"gray"}">${e(p.status||"-")}</span><h3>${e(p.name||"(ยังไม่ตั้งชื่อ)")}</h3><p>${e(p.agencyFull||p.agency||"-")}</p>
+  <div class="mt"><span>วงเงินสัญญา</span><b>${baht(p.budget)}</b></div><div class="mt" style="margin-top:6px"><span>เบิกงวดสะสม</span><b>${pc.toFixed(1)}%</b></div><div class="pg"><i style="width:${pc}%"></i></div>
+  <div class="mt"><span>วันคงเหลือของสัญญา</span><b style="color:${warn||(left!=null&&left<0)?"var(--red)":"inherit"}">${left==null?"-":left<0?`เกิน ${-left} วัน`:`${left} วัน`}</b></div></div>`}).join("")||`<p class="sub">${S.loaded?"ยังไม่มีโครงการ กด “+ เพิ่มโครงการใหม่” เพื่อเริ่มต้น":"กำลังโหลด…"}</p>`;
+ applyRole()}
+
+// ---------- project view ----------
+const fld=(f,l,t="text",x="")=>`<label>${l}<input data-p="${f}" type="${t}" ${t=="number"?'step="any"':""} ${x}></label>`;
+function openProject(id){
+ S.pid=id;S.cur=S.projects.find(p=>p.id==id);S.exp=[];S.inst=[];S.subs.forEach(f=>f());
+ S.subs=["inst","exp"].map(k=>onSnapshot(collection(db,"projects",id,COLL[k]),s=>{S[k]=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>k=="exp"?(a.date||"").localeCompare(b.date||"")||(a.ts||0)-(b.ts||0):num(a.no)-num(b.no));paint()},()=>st("err")));
+ main.innerHTML=`<header class="top"><div><button class="btn" id="back">← กลับหน้าแรก</button></div><div class="row"><button class="btn" id="ppdf">Export PDF / พิมพ์ A4</button><button class="btn" id="pcsv">Export CSV</button><label class="btn ed" style="margin:0">Import CSV<input id="imp" type="file" accept=".csv" hidden></label><button class="btn dng ed" id="delp">ลบโครงการ</button></div></header>
+ <div id="dash"></div>
+ <div class="box sec"><h2>ข้อมูลโครงการ</h2><p id="perr" class="err"></p><div class="grid">
+ <label class="w2">ชื่อโครงการ<input data-p="name" list="dln" data-l="names"></label>
+ <label>หน่วยงาน<input data-p="agency" list="dla" data-l="agencies"></label>
+ ${fld("agencyFull","ชื่อหน่วยงานเต็ม")}${fld("site","หน้างาน (ที่ตั้ง/สถานที่ก่อสร้าง)","text",'class="w2"')}
+ ${fld("budget","วงเงินในสัญญา (บาท)","number")}${fld("contractNo","เลขที่สัญญา")}${fld("contractDate","ลงวันที่","date")}
+ ${fld("start","วันที่เริ่มสัญญา","date")}${fld("end","วันสิ้นสุดสัญญา","date")}${fld("days","จำนวนวัน (คำนวณให้ แก้เองได้)","number")}
+ <label>สถานะโครงการ<select data-p="status">${Object.keys(STAT).map(s=>`<option>${s}</option>`).join("")}</select></label></div></div>
+ <div class="box sec"><h2>ขยายสัญญา</h2><div class="tw" id="text"></div><button class="btn ed addb" id="addx">+ เพิ่มการขยายสัญญา</button></div>
+ <div class="box sec"><h2>เบิกงวด</h2><div class="tw" id="tinst"></div><div id="isum"></div><button class="btn ed addb" id="addi">+ เพิ่มงวด</button></div>
+ <div class="box sec"><h2>บันทึกค่าใช้จ่าย</h2>
+ <div class="fl"><select class="f" id="fc"><option value="">ทุกหมวด</option>${CATS.map(c=>`<option>${c}</option>`).join("")}</select><input class="f" id="fp" list="dlp" placeholder="ผู้จ่าย (ทุกคน)"><select class="f" id="fm"><option value="">ทุกวิธีจ่าย</option>${METH.map(c=>`<option>${c}</option>`).join("")}</select><label style="margin:0">ตั้งแต่<input class="f" id="fd1" type="date"></label><label style="margin:0">ถึง<input class="f" id="fd2" type="date"></label></div>
+ <div id="esum"></div><div class="tw" id="texp"></div><button class="btn pri ed addb" id="adde">+ เพิ่มรายการ</button></div>`;
+ paint()}
+const closed=el=>el.contains(document.activeElement);
+function paint(){
+ if(!S.pid)return paintHome();
+ const p=S.cur=S.projects.find(x=>x.id==S.pid);
+ if(!p){if(S.loaded)showHome();return}
+ $$("[data-p]").forEach(el=>{if(el!==document.activeElement)el.value=p[el.dataset.p]??""});
+ dash(p);paintExt(p);tbl("inst");tbl("exp");sums();applyRole()}
+function dash(p){
+ const end=eff(p),t=today(),tot=p.start&&end?diff(p.start,end):0,pas=p.start?diff(p.start,t):0,left=end?diff(t,end):null,pc=tot>0?Math.max(0,Math.min(100,pas/tot*100)):0;
+ const ex=sum(S.exp),dr=num(p.drawn),pl=dr-ex,warn=left!=null&&(left<30)&&ACTIVE.includes(p.status);
+ const bc=CATS.map(c=>[c,sum(S.exp.filter(r=>r.cat==c))]).filter(x=>x[1]>0),mx=Math.max(1,...bc.map(x=>x[1]));
+ $("#dash").innerHTML=`<div class="printonly"><h2>รายงานสรุปโครงการ · ${thd(today())}</h2></div>
+ <h1>${e(p.name||"(ยังไม่ตั้งชื่อ)")} <span class="badge ${STAT[p.status]||"gray"}">${e(p.status||"")}</span></h1><p class="sub">${e(p.agencyFull||p.agency||"")} · ${stampTxt(p)}</p>
+ <div class="box sec"><div class="mt" style="margin:0"><span>ระยะเวลาสัญญา ${thd(p.start)} – ${thd(end)}${p.ext?.length?` (ขยาย ${p.ext.length} ครั้ง)`:""}</span><b style="color:${warn||(left!=null&&left<0)?"var(--red)":"inherit"}">${left==null?"-":left<0?`เกินกำหนด ${-left} วัน`:`เหลือ ${left} วัน`}</b></div><div class="pg ${warn?"red":""}"><i style="width:${pc}%"></i></div></div>
+ <div class="kpis sec"><div class="k"><b>${baht(p.budget)}</b><span>วงเงินสัญญา</span></div><div class="k"><b>${baht(dr)}</b><span>เบิกไปแล้ว</span></div><div class="k"><b>${baht(num(p.budget)-dr)}</b><span>คงเหลือ</span></div><div class="k"><b>${baht(ex)}</b><span>ค่าใช้จ่ายรวม</span></div><div class="k ${pl<0?"r":"g"}"><b>${baht(pl)}</b><span>${pl<0?"ขาดทุน":"กำไร"}เบื้องต้น (เบิก − ค่าใช้จ่าย)</span></div></div>
+ <div class="box"><h2>ค่าใช้จ่ายแยกตามหมวด</h2>${bc.map(([c,v])=>`<div class="cb"><span>${c}</span><i style="width:${v/mx*100}%"></i><b>${baht(v)}</b></div>`).join("")||'<p class="sub">ยังไม่มีค่าใช้จ่าย</p>'}</div>`}
+function paintExt(p){const el=$("#text");if(!el||closed(el))return;
+ el.innerHTML=(p.ext?.length?`<table data-k="ext"><thead><tr><th>ครั้งที่</th><th>จำนวนวันที่ขยาย</th><th>เหตุผล</th><th>วันที่อนุมัติ</th><th>วันสิ้นสุดสัญญาใหม่</th><th class="ed"></th></tr></thead><tbody>${p.ext.map((x,i)=>`<tr data-i="${i}"><td>${i+1}</td><td><input data-f="days" type="number" value="${e(x.days)}"></td><td><input data-f="reason" value="${e(x.reason)}"></td><td><input data-f="date" type="date" value="${e(x.date)}"></td><td class="ne">${thd(x.newEnd)}</td><td class="ed"><button class="x" data-del>🗑</button></td></tr>`).join("")}</tbody></table>`:'<p class="sub">ไม่มีการขยายสัญญา</p>')}
+const recalc=p=>{let c=p.end;(p.ext||[]).forEach(x=>{c=c?addD(c,num(x.days)):"";x.newEnd=c})};
+const cell=(f,t,v,o)=>t=="sel"?`<select data-f="${f}">${o.map(x=>`<option${x==v?" selected":""}>${x}</option>`).join("")}</select>`:`<input data-f="${f}" type="${t=="dl"?"text":t}" value="${e(v)}"${t=="dl"?' list="dlp" data-l="payers"':""}${t=="number"?' step="any"':""}>`;
+function filt(){const g=i=>$(i)?.value||"";return S.exp.filter(r=>(!g("#fc")||r.cat==g("#fc"))&&(!g("#fp")||(r.payer||"").includes(g("#fp")))&&(!g("#fm")||r.meth==g("#fm"))&&(!g("#fd1")||r.date>=g("#fd1"))&&(!g("#fd2")||r.date<=g("#fd2")))}
+function tbl(k){const el=$("#t"+k);if(!el)return;if(closed(el))return;
+ const rows=k=="exp"?filt():S.inst;
+ el.innerHTML=`<table data-k="${k}"><thead><tr>${COLS[k].map(c=>`<th>${c[2]}</th>`).join("")}<th class="ed"></th></tr></thead><tbody>${rows.map(r=>`<tr data-id="${r.id}">${COLS[k].map(c=>`<td>${cell(c[0],c[1],r[c[0]],c[3])}</td>`).join("")}<td class="ed"><button class="x" data-del title="ลบ">🗑</button></td></tr>`).join("")||`<tr><td colspan="${COLS[k].length+1}" class="sub">ยังไม่มีรายการ</td></tr>`}</tbody></table>`}
+function sums(){
+ const p=S.cur;if(!p)return;
+ if($("#isum")){const a=sum(S.inst),pc=num(p.budget)?a/num(p.budget)*100:0;$("#isum").innerHTML=`<div class="sumrow" style="padding:8px 10px;margin-top:6px">รวม ${baht(a)} บาท · % งานรวม ${sum(S.inst,"pct")}% · เบิกสะสม ${pc.toFixed(1)}% ของวงเงิน</div>`}
+ const rows=filt(),by=k=>Object.entries(rows.reduce((m,r)=>(m[r[k]||"-"]=(m[r[k]||"-"]||0)+num(r.amt),m),{})).map(([a,b])=>`<li><span>${e(a)}</span><b>${baht(b)}</b></li>`).join("");
+ if($("#esum"))$("#esum").innerHTML=`<div class="chips"><div class="k"><b>${baht(sum(rows))}</b><span>ยอดรวม (${rows.length} รายการ)</span></div><div class="k r"><b>${baht(sum(rows.filter(r=>r.st=="ค้างจ่าย")))}</b><span>ยอดค้างจ่าย</span></div></div><div class="two"><div><h2>แยกตามผู้จ่าย</h2><ul class="l">${by("payer")}</ul></div><div><h2>แยกตามหมวด</h2><ul class="l">${by("cat")}</ul></div></div>`}
+function applyRole(){if(S.role=="editor")return;$$("#main input:not(.f),#main select:not(.f)").forEach(x=>x.disabled=true)}
+
 // ---------- events ----------
-$('#main').addEventListener('input',onEdit);$('#main').addEventListener('change',onEdit);
-function onEdit(e){const el=e.target,d=el.dataset;
- if(d.flt){S.f[d.flt]=el.value;return renderList()}
- if(d.eflt){S.ef[d.eflt]=el.value;return renderEx()}
- if(ro()||!d.t)return;
- const v=el.type==='number'?(el.value===''?'':+el.value):el.value,p=S.P.find(x=>x.id===S.cur),key='P'+p.id,cur={...p,...D[key]};
- if(d.t==='p'){const patch={[d.k]:v};
-  if(d.k==='start'||d.k==='end'){const s=d.k==='start'?v:cur.start,en=d.k==='end'?v:cur.end;
-   if(s&&en&&en<s){alert('วันสิ้นสุดสัญญาต้องไม่ก่อนวันเริ่มสัญญา');el.value=cur[d.k]||'';return}
-   if(s&&en){patch.days=diff(s,en)+1;$('[data-t=p][data-k=days]').value=patch.days}}
-  qs(key,patch,w=>writeP(p.id,w))}
- else if(d.t==='x'){const a=structuredClone(cur.ext||[]);a[+d.id][d.k]=v;qs(key,{ext:a},w=>writeP(p.id,w))}
- else qs(d.t+d.id,{[d.k]:v},writeS(d.t==='i'?'installments':'expenses',p.id,d.id))}
-$('#main').addEventListener('click',async e=>{const b=e.target.closest('button[data-act]');if(!b)return;const{act,t,id}=b.dataset,p=S.P.find(x=>x.id===S.cur);
- if(act==='newP')run(async()=>{const r=await addDoc(collection(db,'projects'),{name:'',agency:'',amount:0,status:'รอลงนามสัญญา',ext:[],...stamp()});location.hash=r.id});
- else if(act==='addI')run(()=>addDoc(collection(db,'projects',p.id,'installments'),{no:S.I.filter(i=>i.pid===p.id).length+1,pct:'',amount:'',dSubmit:'',dPaid:'',status:'รอเบิก',note:'',...stamp()}));
- else if(act==='addE')run(()=>addDoc(collection(db,'projects',p.id,'expenses'),{date:today(),item:'',cat:CAT[0],amount:'',method:MT[0],payer:'',payee:'',status:ES[0],note:'',...stamp()}));
- else if(act==='addX')run(()=>writeP(p.id,{ext:[...(p.ext||[]),{days:'',reason:'',date:today()}]}));
- else if(act==='del'){if(!confirm('ยืนยันการลบรายการนี้?'))return;
-  run(()=>t==='x'?writeP(p.id,{ext:(p.ext||[]).filter((_,i)=>i!==+id)}):deleteDoc(doc(db,'projects',p.id,t==='i'?'installments':'expenses',id)))}
- else if(act==='delP'){if(!confirm(`ยืนยันลบโครงการ "${p.name}" พร้อมเบิกงวดและค่าใช้จ่ายทั้งหมด? (ควรกดสำรอง JSON ก่อน)`))return;
-  run(async()=>{const bt=writeBatch(db);S.I.filter(i=>i.pid===p.id).forEach(i=>bt.delete(doc(db,'projects',p.id,'installments',i.id)));S.E.filter(x=>x.pid===p.id).forEach(x=>bt.delete(doc(db,'projects',p.id,'expenses',x.id)));bt.delete(doc(db,'projects',p.id));await bt.commit();location.hash=''})}
- else if(act==='print')print();
- else if(act==='json')dl(`backup-${today()}.json`,JSON.stringify({projects:S.P.map(p=>({...p,installments:S.I.filter(x=>x.pid===p.id),expenses:S.E.filter(x=>x.pid===p.id)})),settings:S.set},null,1),'application/json');
- else if(act==='csvP')dl(`projects-${today()}.csv`,csv([['ชื่อโครงการ','หน่วยงาน','สถานะ','วงเงิน','เบิกแล้ว','เลขที่สัญญา','เริ่ม','สิ้นสุด(ใหม่)'],...S.P.map(p=>[p.name,p.agencyFull||p.agency,p.status,p.amount,claimed(p.id),p.contractNo,p.start,effEnd(p.end)])]),'text/csv');
- else if(act==='csvE')dl(`expenses-${today()}.csv`,csv([['โครงการ','วันที่','รายการ','หมวด','จำนวนเงิน','วิธีจ่าย','ผู้จ่าย','จ่ายให้','สถานะ','หมายเหตุ'],...S.E.map(x=>[S.P.find(p=>p.id===x.pid)?.name,x.date,x.item,x.cat,x.amount,x.method,x.payer,x.payee,x.status,x.note])]),'text/csv');
- else if(act==='seed')run(seed);
- else if(act==='unseed'){if(!confirm('ลบเฉพาะข้อมูลตัวอย่าง?'))return;run(async()=>{const bt=writeBatch(db);S.P.filter(p=>p.sample).forEach(p=>{bt.delete(doc(db,'projects',p.id));S.I.filter(i=>i.pid===p.id).forEach(i=>bt.delete(doc(db,'projects',p.id,'installments',i.id)));S.E.filter(x=>x.pid===p.id).forEach(x=>bt.delete(doc(db,'projects',p.id,'expenses',x.id)))});await bt.commit()})}});
-$('#main').addEventListener('change',e=>{if(e.target.dataset.act==='imp'&&e.target.files[0])run(()=>imp(e.target.files[0]))});
-const csv=r=>'\ufeff'+r.map(x=>x.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\n');
-function dl(n,txt,m){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:m+';charset=utf-8'}));a.download=n;a.click()}
-async function imp(file){const j=JSON.parse(await file.text());if(!confirm(`นำเข้า ${j.projects.length} โครงการ (รหัสซ้ำจะถูกเขียนทับ) ดำเนินการต่อ?`))return;const ops=[];
- for(const{installments=[],expenses=[],id,...p}of j.projects){ops.push([doc(db,'projects',id),p]);
-  installments.forEach(({id:i,pid,...x})=>ops.push([doc(db,'projects',id,'installments',i),x]));expenses.forEach(({id:i,pid,...x})=>ops.push([doc(db,'projects',id,'expenses',i),x]))}
- if(j.settings)ops.push([doc(db,'settings','lists'),j.settings]);
- for(let i=0;i<ops.length;i+=400){const bt=writeBatch(db);ops.slice(i,i+400).forEach(([r,d])=>bt.set(r,d));await bt.commit()}}
-async function seed(){const bt=writeBatch(db),t=today(),sm={sample:true,...stamp()};
- const mk=(id,p,ins,ex)=>{bt.set(doc(db,'projects',id),{...p,ext:[],...sm});ins.forEach((x,i)=>bt.set(doc(db,'projects',id,'installments',id+'i'+i),{no:i+1,note:'',...x,...sm}));
-  ex.forEach((x,i)=>bt.set(doc(db,'projects',id,'expenses',id+'e'+i),{note:'',...x,...sm}))};
- mk('demo1',{name:'ปรับปรุงถนน คสล. หมู่ 5',agency:'เทศบาล',agencyFull:'เทศบาลตำบลตัวอย่าง',site:'ต.ตัวอย่าง อ.เมือง',amount:2450000,contractNo:'12/2569',contractDate:add(t,-70),start:add(t,-60),end:add(t,100),days:161,status:'กำลังก่อสร้าง'},
-  [{pct:30,amount:735000,dSubmit:add(t,-20),dPaid:add(t,-5),status:'ได้รับเงินแล้ว'}],
-  [{date:add(t,-30),item:'ปูนซีเมนต์ 200 ถุง',cat:'วัสดุก่อสร้าง',amount:46000,method:'โอนเงิน',payer:'สมชาย',payee:'ร้านวัสดุตัวอย่าง',status:'จ่ายแล้ว'},{date:add(t,-10),item:'ค่าแรงช่าง งวด 1',cat:'ค่าแรง',amount:85000,method:'เงินสด',payer:'สมหญิง',payee:'หัวหน้าช่าง',status:'ค้างจ่าย'}]);
- mk('demo2',{name:'ก่อสร้างอาคารเอนกประสงค์',agency:'อบต.',agencyFull:'องค์การบริหารส่วนตำบลตัวอย่าง',site:'หมู่ 2 ต.ตัวอย่าง',amount:5800000,contractNo:'3/2569',contractDate:add(t,-200),start:add(t,-190),end:add(t,10),days:201,status:'กำลังก่อสร้าง'},
-  [{pct:40,amount:2320000,dSubmit:add(t,-90),dPaid:add(t,-70),status:'ได้รับเงินแล้ว'},{pct:30,amount:1740000,dSubmit:add(t,-5),dPaid:'',status:'ส่งเบิกแล้ว'}],
-  [{date:add(t,-100),item:'เหล็กเส้น',cat:'วัสดุก่อสร้าง',amount:620000,method:'เช็ค',payer:'สมชาย',payee:'บริษัทเหล็กตัวอย่าง',status:'จ่ายแล้ว'},{date:add(t,-15),item:'ค่าเช่ารถแบคโฮ',cat:'ค่าเครื่องจักร-ขนส่ง',amount:38000,method:'โอนเงิน',payer:'สมหญิง',payee:'ร้านเครื่องจักรตัวอย่าง',status:'จ่ายแล้ว'}]);
- await bt.commit()}
-// ---------- เริ่มทำงานทันที (ไม่มีหน้าล็อกอิน) ----------
-S.name=(localStorage.getItem('uname')||prompt('พิมพ์ชื่อของคุณ (ใช้แสดงว่าใครแก้ไขล่าสุด)')||'ไม่ระบุชื่อ').trim();
-localStorage.setItem('uname',S.name);
-const who=$('#who');who.textContent=S.name;who.title='กดเพื่อเปลี่ยนชื่อ';who.style.cursor='pointer';
-who.onclick=()=>{const n=prompt('เปลี่ยนชื่อ',S.name);if(n&&n.trim()){S.name=n.trim();localStorage.setItem('uname',S.name);who.textContent=S.name}};
-start();route();
-function wait(){if(S.loaded)return;const bad=String(firebaseConfig.projectId||'').includes('ใส่');
- $('#main').innerHTML=`<section class="box"><h2>${bad||S.err?'เชื่อมต่อฐานข้อมูลไม่ได้':'กำลังโหลดข้อมูล…'}</h2>`+
- (bad?'<p class="red">ยังไม่ได้ใส่ค่า firebaseConfig ที่ต้นไฟล์ app.js</p>':'')+
- (S.err?`<p class="red">รหัสข้อผิดพลาด: ${esc(S.err)}</p>${S.err==='permission-denied'?'<p>ยังไม่ได้ตั้ง Rules ให้อ่าน/เขียนได้ (Firestore → Rules → Publish)</p>':''}`:'')+
- '<p class="small">ตรวจสอบ: 1) app.js ใส่ firebaseConfig ครบ 2) สร้าง Firestore Database แล้ว 3) ตั้ง Rules แล้ว 4) กด Ctrl+F5 แล้วเปิด Console (F12) ดูข้อความสีแดง</p></section>'}
-wait();setTimeout(()=>{if(!S.loaded&&!S.err){S.err='หมดเวลารอ (ไม่พบ Firestore ตาม projectId หรือยังไม่ได้สร้างฐานข้อมูล)';wait()}},8000);
+main.addEventListener("focusout",()=>setTimeout(()=>{if(S.pid)paint()},120));
+main.addEventListener("input",ev=>{const el=ev.target;
+ if(el.classList.contains("f"))return S.pid?(tbl("exp"),sums()):paintHome();
+ if(el.dataset.p)return onP(el);
+ const tb=el.closest("[data-k]"),tr=el.closest("tr"),f=el.dataset.f;if(!tb||!f)return;
+ const v=el.type=="number"?(el.value===""?"":+el.value):el.value,k=tb.dataset.k;
+ if(k=="ext"){const x=S.cur.ext[tr.dataset.i];x[f]=v;recalc(S.cur);patch({ext:S.cur.ext});$$("#text .ne").forEach((c,i)=>c.textContent=thd(S.cur.ext[i].newEnd));return dash(S.cur)}
+ const id=tr.dataset.id,row=S[k].find(r=>r.id==id);if(row)row[f]=v;
+ later(k+id+f,()=>setDoc(doc(db,"projects",S.pid,COLL[k],id),{[f]:v,...stamp()},{merge:true}));
+ if(k=="inst")patch({drawn:sum(S.inst.filter(r=>r.st!="รอเบิก"))});
+ sums();dash(S.cur)});
+main.addEventListener("change",ev=>{const el=ev.target,l=el.dataset.l;if(l)addList(l,el.value);if(el.dataset.p=="name")addList("names",el.value)});
+function onP(el){
+ const p=S.cur,f=el.dataset.p,v=el.type=="number"?(el.value===""?"":+el.value):el.value,o={[f]:v};
+ if(f=="start"||f=="end"){const s=f=="start"?v:p.start,en=f=="end"?v:p.end;
+  if(s&&en&&en<s){$("#perr").textContent="วันสิ้นสุดสัญญาต้องไม่ก่อนวันเริ่มสัญญา";return}
+  $("#perr").textContent="";if(s&&en){o.days=diff(s,en)+1;$('[data-p="days"]').value=o.days}
+  if(f=="end"){p.end=v;recalc(p);o.ext=p.ext||[]}}
+ patch(o);dash(p)}
+main.addEventListener("click",async ev=>{const t=ev.target,id=t.id;
+ const open=t.closest("[data-open]");if(open)return openProject(open.dataset.open);
+ if(id=="back")return showHome();
+ if(id=="addp"){const nid=doc(collection(db,"projects")).id;await run(()=>setDoc(doc(db,"projects",nid),{name:"",agency:"",status:"รอลงนามสัญญา",budget:0,drawn:0,ext:[],...stamp()}));return openProject(nid)}
+ if(id=="addx"){S.cur.ext=[...(S.cur.ext||[]),{days:0,reason:"",date:""}];recalc(S.cur);patch({ext:S.cur.ext});return paint()}
+ if(id=="addi"){const n=doc(collection(db,"projects",S.pid,"installments"));return run(()=>setDoc(n,{no:S.inst.length+1,pct:"",amt:0,st:"รอเบิก",...stamp()}))}
+ if(id=="adde"){const n=doc(collection(db,"projects",S.pid,"expenses"));return run(()=>setDoc(n,{date:today(),item:"",cat:CATS[0],amt:0,meth:METH[0],payer:S.name,payee:"",st:PAY[0],ts:Date.now(),...stamp()}))}
+ if(id=="delp"&&confirm(`ลบโครงการ “${S.cur.name||"ไม่มีชื่อ"}” และข้อมูลค่าใช้จ่าย/เบิกงวดทั้งหมด?\nลบแล้วกู้คืนไม่ได้ (แนะนำให้ Export CSV สำรองก่อน)`)){const i=S.pid;showHome();return run(()=>delProj(i))}
+ if(t.matches("[data-del]")){const tr=t.closest("tr"),k=t.closest("[data-k]").dataset.k;if(!confirm("ยืนยันการลบรายการนี้?"))return;
+  if(k=="ext"){S.cur.ext.splice(+tr.dataset.i,1);recalc(S.cur);patch({ext:S.cur.ext});return paint()}
+  await run(()=>deleteDoc(doc(db,"projects",S.pid,COLL[k],tr.dataset.id)));if(k=="inst")patch({drawn:sum(S.inst.filter(r=>r.st!="รอเบิก"&&r.id!=tr.dataset.id))})}
+ if(id=="hpdf"||id=="ppdf")return print();
+ if(id=="hcsv")return csv("โครงการ",["ชื่อโครงการ","หน่วยงาน","หน่วยงานเต็ม","หน้างาน","วงเงิน","เลขที่สัญญา","ลงวันที่","เริ่ม","สิ้นสุด(รวมขยาย)","จำนวนวัน","สถานะ","เบิกสะสม"],S.projects.map(p=>[p.name,p.agency,p.agencyFull,p.site,p.budget,p.contractNo,p.contractDate,p.start,eff(p),p.days,p.status,p.drawn]));
+ if(id=="pcsv"){const nm=S.cur.name||"project";
+  csv(nm+"_ค่าใช้จ่าย",COLS.exp.map(c=>c[2]),S.exp.map(r=>COLS.exp.map(c=>r[c[0]])));
+  return csv(nm+"_เบิกงวด",COLS.inst.map(c=>c[2]),S.inst.map(r=>COLS.inst.map(c=>r[c[0]])))}
+ if(id=="seed")return run(seed);
+ if(id=="clr"&&confirm("ลบเฉพาะโครงการตัวอย่าง (sample) ทั้งหมด?"))return run(async()=>{for(const p of S.projects.filter(x=>x.sample))await delProj(p.id)})});
+main.addEventListener("change",async ev=>{if(ev.target.id!="imp")return;const f=ev.target.files[0];if(!f)return;
+ const rows=parseCSV((await f.text()).replace(/^\uFEFF/,"")),h=rows.shift()||[],C=COLS.exp;
+ if(!confirm(`นำเข้า ${rows.length} รายการเข้าโครงการนี้?`))return;
+ run(async()=>{const b=writeBatch(db);rows.filter(r=>r.some(x=>x)).forEach((r,i)=>{const o={ts:Date.now()+i,...stamp()};C.forEach(c=>{const j=h.indexOf(c[2]);if(j>=0)o[c[0]]=c[1]=="number"?num(r[j]):r[j]});b.set(doc(collection(db,"projects",S.pid,"expenses")),o)});await b.commit()});ev.target.value=""});
+async function delProj(id){for(const c of Object.values(COLL)){const s=await getDocs(collection(db,"projects",id,c));for(const d of s.docs)await deleteDoc(d.ref)}await deleteDoc(doc(db,"projects",id))}
+
+// ---------- csv ----------
+function csv(name,head,rows){const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;
+ const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\uFEFF"+[head,...rows].map(r=>r.map(q).join(",")).join("\r\n")],{type:"text/csv"}));a.download=`${name}_${today()}.csv`;a.click()}
+function parseCSV(t){const r=[];let row=[],c="",q=0;for(let i=0;i<t.length;i++){const h=t[i];
+ if(q){if(h=='"'){if(t[i+1]=='"'){c+='"';i++}else q=0}else c+=h}else if(h=='"')q=1;else if(h==","){row.push(c);c=""}else if(h=="\n"){row.push(c);r.push(row);row=[];c=""}else if(h!="\r")c+=h}
+ if(c||row.length){row.push(c);r.push(row)}return r}
+
+// ---------- sample data ----------
+async function seed(){
+ const P=[{id:"sample_1",name:"ก่อสร้างถนน คสล. สายบ้านดอนแก้ว",agency:"เทศบาล",agencyFull:"เทศบาลตำบลดอนแก้ว",site:"หมู่ 3 ต.ดอนแก้ว อ.แม่ริม จ.เชียงใหม่",budget:2450000,contractNo:"12/2568",contractDate:"2025-01-20",start:"2025-02-01",end:"2025-07-30",days:180,status:"กำลังก่อสร้าง",ext:[{days:30,reason:"ฝนตกชุก",date:"2025-07-10",newEnd:"2025-08-29"}]},
+  {id:"sample_2",name:"ปรับปรุงอาคารสำนักงานโยธาธิการ",agency:"กรมโยธาธิการและผังเมือง",agencyFull:"สำนักงานโยธาธิการและผังเมืองจังหวัดเชียงใหม่",site:"ถ.ช้างคลาน อ.เมือง จ.เชียงใหม่",budget:1380000,contractNo:"พ.07/2568",contractDate:"2025-03-01",start:"2025-03-15",end:"2025-09-10",days:180,status:"ส่งมอบงานแล้ว",ext:[]}];
+ const I={sample_1:[[1,30,735000,"2025-04-01","2025-04-20","ได้รับเงินแล้ว"],[2,60,735000,"2025-06-10","","ส่งเบิกแล้ว"],[3,100,980000,"","","รอเบิก"]],sample_2:[[1,50,690000,"2025-06-01","2025-06-25","ได้รับเงินแล้ว"],[2,100,690000,"2025-09-15","2025-10-05","ได้รับเงินแล้ว"]]};
+ const E={sample_1:[["2025-02-10","ซื้อหินคลุก/ทราย","วัสดุก่อสร้าง",180000,"โอนเงิน","สมชาย","ร้านวัสดุแม่ริม","จ่ายแล้ว"],["2025-03-05","ค่าแรงช่างเทพื้น","ค่าแรง",120000,"เงินสด","สมหญิง","ทีมช่างบุญมี","จ่ายแล้ว"],["2025-03-20","ค่าน้ำมันรถบรรทุก","ค่าน้ำมัน",26500,"เครดิต-ค้างจ่าย","สมชาย","ปั๊มน้ำมันดอนแก้ว","ค้างจ่าย"]],sample_2:[["2025-03-25","สีและวัสดุทาสี","วัสดุก่อสร้าง",98000,"โอนเงิน","สมหญิง","ร้านสีเชียงใหม่","จ่ายแล้ว"],["2025-04-12","ค่าเช่านั่งร้าน","ค่าเช่า",45000,"เช็ค","สมชาย","บจก.นั่งร้านไทย","ค้างจ่าย"]]};
+ for(const p of P){const b=writeBatch(db);const{id,...d}=p;b.set(doc(db,"projects",id),{...d,sample:true,drawn:sum((I[id]).map(r=>({a:r[2],s:r[5]})).filter(r=>r.s!="รอเบิก"),"a"),...stamp()});
+  I[id].forEach(r=>b.set(doc(collection(db,"projects",id,"installments")),{no:r[0],pct:r[1],amt:r[2],sent:r[3],recv:r[4],st:r[5],note:""}));
+  E[id].forEach((r,i)=>b.set(doc(collection(db,"projects",id,"expenses")),{date:r[0],item:r[1],cat:r[2],amt:r[3],meth:r[4],payer:r[5],payee:r[6],st:r[7],ts:i}));await b.commit()}}
