@@ -64,21 +64,69 @@ td input,td select{margin:0;min-width:96px;padding:6px 8px}td input[type=number]
 @media print{aside,.tools,.bar,.fl,.ed,.btn,.top .row,.x{display:none!important}
  #shell{display:block}body{background:#fff;font-size:12px}main{padding:0;max-width:none}.printonly{display:block;margin-bottom:8px}
  input,select{border:0;background:none;appearance:none;padding:0;min-width:0!important}table{min-width:0}.box,.k,.pc{break-inside:avoid}}
+@media screen{
+:root{--navy:#14145c;--blue:#2f6bff;--mut:#7b83a0;--bd:#eceff7}
+body{background:#fff;color:#2a2f4a}
+h1{font-size:28px;font-weight:700}
+#shell{grid-template-columns:84px 1fr}
+aside{width:84px;background:#f2f6ff;border:0;padding:22px 0;align-items:center;gap:6px}
+.logo{width:46px;height:46px;border-radius:15px;background:linear-gradient(135deg,#2f6bff,#6cc1ff);color:#fff;display:grid;place-items:center;font-weight:700;font-size:21px;box-shadow:0 8px 18px rgba(47,107,255,.35)}
+nav{margin-top:22px}
+nav a{width:48px;height:48px;padding:0;display:grid;place-items:center;border-radius:50%;background:linear-gradient(135deg,#2f6bff,#5aa9ff);color:#fff;box-shadow:0 8px 18px rgba(47,107,255,.35)}
+nav a svg{width:22px;height:22px}
+.side-b{margin-top:auto;display:block}
+.av{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#ffb26b,#ff7a8a);color:#fff;display:grid;place-items:center;font-weight:600;cursor:pointer;border:3px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.tools{display:flex;justify-content:flex-end;padding:20px 32px 0}
+#save{padding:6px 14px;border-radius:99px;font-size:13px;font-weight:500;background:#e3f7ec;color:#17844f;text-align:center}
+main{padding:8px 32px 48px;max-width:1240px}
+.box,.card,.k,.pc{border:0;border-radius:22px;box-shadow:0 10px 30px rgba(60,90,160,.10)}
+.box>h2::before{content:"";display:inline-block;width:6px;height:18px;border-radius:4px;margin-right:8px;vertical-align:-3px;background:linear-gradient(#2f6bff,#6cc1ff)}
+.btn{border-radius:99px;border:0;box-shadow:0 4px 14px rgba(60,90,160,.12);padding:9px 18px}
+.btn.pri{background:linear-gradient(135deg,#2f6bff,#5aa9ff);box-shadow:0 8px 18px rgba(47,107,255,.35)}
+.btn.dng{background:#fff0f0}
+.bar{grid-template-columns:2fr 1fr 1fr}
+.bar input,.bar select,.fl input,.fl select{border:0;border-radius:99px;padding:11px 18px;box-shadow:0 4px 16px rgba(60,90,160,.12)}
+.k{background:#eef3ff}.k b{color:var(--navy);font-size:24px}.k.r b{color:#d62f4b}.k.g b{color:#17844f}
+.kpis .k:nth-child(1){background:linear-gradient(160deg,#fff3ea,#ffdfca)}
+.kpis .k:nth-child(2){background:linear-gradient(160deg,#eef3ff,#d5e3ff)}
+.kpis .k:nth-child(3){background:linear-gradient(160deg,#e8f8ff,#cbeeff)}
+.kpis .k:nth-child(4){background:linear-gradient(160deg,#eefaf1,#d2f2dd)}
+.kpis .k:nth-child(5){background:linear-gradient(160deg,#f6efff,#e3d6ff)}
+.pc{background:#f2f6ff;padding:20px}
+.pc[data-c=blue]{background:linear-gradient(160deg,#f3f7ff,#d9e8ff)}
+.pc[data-c=amber]{background:linear-gradient(160deg,#fff7ec,#ffe3c2)}
+.pc[data-c=green]{background:linear-gradient(160deg,#f0fbf4,#d0f1dc)}
+.pc[data-c=violet]{background:linear-gradient(160deg,#f7f1ff,#e2d5ff)}
+.pc[data-c=gray]{background:linear-gradient(160deg,#f6f7fa,#e5e8ef)}
+.pc[data-c=slate]{background:linear-gradient(160deg,#f1f3f8,#dbe0ea)}
+.pc:hover{transform:translateY(-3px);box-shadow:0 16px 36px rgba(60,90,160,.2)}.pc{transition:.15s}
+.pc h3{font-size:17px}.pc .site{color:#4a5272}
+.vb{margin-top:14px;background:#fff;border-radius:99px;text-align:center;padding:9px;font-weight:600;color:var(--navy);box-shadow:0 6px 16px rgba(60,90,160,.12)}
+.pg{height:9px;background:rgba(255,255,255,.75)}.pg i{background:linear-gradient(90deg,#2f6bff,#6cc1ff)}.pg.red i{background:linear-gradient(90deg,#ff8a3d,#e5384f)}
+.badge{padding:3px 12px}
+th{background:#f2f6ff}th:first-child{border-radius:10px 0 0 10px}
+.sumrow{background:#e6eeff;border-radius:12px}
+.cb i{background:linear-gradient(90deg,#2f6bff,#6cc1ff)}
+.cb:nth-of-type(8n+2) i{background:linear-gradient(90deg,#ff8a3d,#ffc36b)}
+.cb:nth-of-type(8n+3) i{background:linear-gradient(90deg,#17b26a,#7be0a8)}
+.cb:nth-of-type(8n+4) i{background:linear-gradient(90deg,#8a5cf6,#c2a6ff)}
+.cb:nth-of-type(8n+5) i{background:linear-gradient(90deg,#ff5d8f,#ffa3c0)}
+.cb:nth-of-type(8n+6) i{background:linear-gradient(90deg,#14b8c4,#7de3ea)}
+.cb:nth-of-type(8n+7) i{background:linear-gradient(90deg,#e5b800,#ffe27a)}
+.cb:nth-of-type(8n+8) i{background:linear-gradient(90deg,#64748b,#aab4c4)}
+@media(max-width:800px){#shell{grid-template-columns:1fr}aside{width:auto;flex-direction:row;padding:10px 14px;gap:12px}.logo,nav a,.av{width:40px;height:40px}nav{display:block;margin:0}.side-b{margin:0 0 0 auto}#who{display:grid}.tools{padding:10px 14px 0}main{padding:6px 14px 40px}.bar{grid-template-columns:1fr}}
+}
 </style>
 </head>
 <body>
 <div id="shell">
   <aside>
-    <div class="brand">โครงการ<small>หจก.สรรเสริญการสร้าง</small></div>
-    <nav>
-      <a id="nhome">🏠 โครงการทั้งหมด</a>
-    </nav>
-    <div class="side-b">
-      <div id="who"></div>
-      <div id="save" data-k="ok">บันทึกแล้ว ✓</div>
-    </div>
+    <div class="logo">ส</div>
+    <nav><a id="nhome" title="โครงการทั้งหมด"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="7" height="5" rx="2"/></svg></a></nav>
+    <div class="side-b"><div id="who" class="av"></div></div>
   </aside>
   <div class="wrap">
+    <div class="tools"><div id="save" data-k="ok">บันทึกแล้ว ✓</div></div>
         <main id="main"></main>
   </div>
 </div>
