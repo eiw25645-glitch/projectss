@@ -57,10 +57,11 @@ const addList=(k,v)=>{v=(v||"").trim();if(v&&!(S.lists[k]||[]).includes(v))run((
 
 // ---------- start (ไม่มีล็อกอิน) ----------
 S.role="editor";
-const askName=()=>{const n=(prompt("ใส่ชื่อของคุณ (ใช้แสดงว่าใครแก้ไขล่าสุด)",S.name||"")||S.name||"ไม่ระบุชื่อ").trim();S.name=n;try{localStorage.setItem("uname",n)}catch{}$("#who").textContent=`👤 ${n} (กดเพื่อเปลี่ยนชื่อ)`};
+const setWho=n=>{$("#who").textContent=[...n][0]||"?";$("#who").title=`${n} (กดเพื่อเปลี่ยนชื่อ)`};
+const askName=()=>{const n=(prompt("ใส่ชื่อของคุณ (ใช้แสดงว่าใครแก้ไขล่าสุด)",S.name||"")||S.name||"ไม่ระบุชื่อ").trim();S.name=n;try{localStorage.setItem("uname",n)}catch{}setWho(n)};
 try{S.name=localStorage.getItem("uname")||""}catch{}
-if(S.name)$("#who").textContent=`👤 ${S.name} (กดเพื่อเปลี่ยนชื่อ)`;else askName();
-$("#who").style.cursor="pointer";$("#who").onclick=askName;
+if(S.name)setWho(S.name);else askName();
+$("#who").onclick=askName;
 showHome();
 S.gl.push(onSnapshot(collection(db,"projects"),s=>{S.projects=s.docs.map(d=>({id:d.id,...d.data()}));S.loaded=true;paint()},()=>st("err")));
 S.gl.push(onSnapshot(doc(db,"settings","lists"),s=>{S.lists=s.data()||{};
@@ -75,7 +76,7 @@ function showHome(){
  <div class="row"><button class="btn" id="hpdf">Export PDF</button><button class="btn" id="hcsv">Export CSV</button><button class="btn pri ed" id="addp">+ เพิ่มโครงการใหม่</button></div></header>
  <div class="printonly"><h2>รายงานสรุปโครงการ · ${thd(today())}</h2></div>
  <div id="sum" class="kpis"></div>
- <div class="bar"><input class="f" id="q" placeholder="ค้นหาชื่อโครงการ / เลขที่สัญญา / หน่วยงาน"><select class="f" id="fs"><option value="">ทุกสถานะ</option>${Object.keys(STAT).map(s=>`<option>${s}</option>`).join("")}</select><select class="f" id="fa"></select></div>
+ <div class="bar"><input class="f" id="q" placeholder="🔍 ค้นหาชื่อโครงการ / เลขที่สัญญา / หน่วยงาน"><select class="f" id="fs"><option value="">ทุกสถานะ</option>${Object.keys(STAT).map(s=>`<option>${s}</option>`).join("")}</select><select class="f" id="fa"></select></div>
  <div id="cards" class="cards"></div>
  <div class="row ed" style="margin-top:24px"><button class="btn" id="seed">โหลดข้อมูลตัวอย่าง 2 โครงการ</button><button class="btn dng" id="clr">ล้างข้อมูลตัวอย่าง</button></div>`;
  paint()}
@@ -87,9 +88,9 @@ function paintHome(){
  const fa=$("#fa").value,ps=S.projects,list=ps.filter(p=>(!fs||p.status==fs)&&(!fa||p.agency==fa)&&(!q||[p.name,p.contractNo,p.agency,p.agencyFull,p.site].join(" ").toLowerCase().includes(q)));
  $("#sum").innerHTML=[["โครงการทั้งหมด",ps.length],["กำลังดำเนินการ",ps.filter(p=>ACTIVE.includes(p.status)).length],["เสร็จแล้ว",ps.filter(p=>DONE.includes(p.status)).length],["วงเงินสัญญารวม",baht(sum(ps,"budget"))],["ยอดเบิกรวม",baht(sum(ps,"drawn"))]].map(([l,v])=>`<div class="k"><b>${v}</b><span>${l}</span></div>`).join("");
  $("#cards").innerHTML=list.map(p=>{const end=eff(p),left=end?diff(today(),end):null,pc=num(p.budget)?Math.min(100,num(p.drawn)/num(p.budget)*100):0,warn=left!=null&&left<30&&ACTIVE.includes(p.status);
-  return`<div class="pc" data-open="${p.id}"><span class="badge ${STAT[p.status]||"gray"}">${e(p.status||"-")}</span><h3>${e(p.name||"(ยังไม่ตั้งชื่อ)")}</h3><p>${e(p.agencyFull||p.agency||"-")}</p>
+  return`<div class="pc" data-c="${STAT[p.status]||"gray"}" data-open="${p.id}"><span class="badge ${STAT[p.status]||"gray"}">${e(p.status||"-")}</span><h3>${e(p.name||"(ยังไม่ตั้งชื่อ)")}</h3><p>${e(p.agencyFull||p.agency||"-")}</p><p class="site">📍 หน้างาน: ${e(p.site||"-")}</p>
   <div class="mt"><span>วงเงินสัญญา</span><b>${baht(p.budget)}</b></div><div class="mt" style="margin-top:6px"><span>เบิกงวดสะสม</span><b>${pc.toFixed(1)}%</b></div><div class="pg"><i style="width:${pc}%"></i></div>
-  <div class="mt"><span>วันคงเหลือของสัญญา</span><b style="color:${warn||(left!=null&&left<0)?"var(--red)":"inherit"}">${left==null?"-":left<0?`เกิน ${-left} วัน`:`${left} วัน`}</b></div></div>`}).join("")||`<p class="sub">${S.loaded?"ยังไม่มีโครงการ กด “+ เพิ่มโครงการใหม่” เพื่อเริ่มต้น":"กำลังโหลด…"}</p>`;
+  <div class="mt"><span>วันคงเหลือของสัญญา</span><b style="color:${warn||(left!=null&&left<0)?"var(--red)":"inherit"}">${left==null?"-":left<0?`เกิน ${-left} วัน`:`${left} วัน`}</b></div><div class="vb">ดูรายละเอียด</div></div>`}).join("")||`<p class="sub">${S.loaded?"ยังไม่มีโครงการ กด “+ เพิ่มโครงการใหม่” เพื่อเริ่มต้น":"กำลังโหลด…"}</p>`;
  applyRole()}
 
 // ---------- project view ----------
