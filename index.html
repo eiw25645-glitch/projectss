@@ -129,6 +129,8 @@ nav a.on{background:linear-gradient(135deg,#2f6bff,#5aa9ff);color:#fff;box-shado
 .bs{display:grid;grid-template-columns:130px 1fr 40px;gap:10px;align-items:center;margin:9px 0;font-size:14px}.bs i{display:block;height:12px;border-radius:7px}.bs b{text-align:right}
 @media(max-width:800px){#shell{grid-template-columns:minmax(0,1fr)}aside{width:auto;height:auto;position:static;flex-direction:row;align-items:center;padding:10px 14px;gap:10px}.brand{padding:0}.brand b,.nl,nav a span,#who span{display:none}nav{display:flex;margin:0 0 0 6px}nav a{padding:10px}.side-b{margin:0 0 0 auto}#who{display:flex}.tools{padding:10px 14px 0}main{padding:6px 14px 40px}.bar,.dg{grid-template-columns:1fr}.bs{grid-template-columns:100px 1fr 30px}}
 }
+@media screen{.tools{gap:10px;align-items:center}}
+@media screen{.i{width:16px;height:16px;vertical-align:-3px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.x{color:var(--mut);padding:4px 6px;line-height:0}.x:hover{color:#d62f4b}nav a svg{stroke-width:1.6}}
 </style>
 </head>
 <body>
@@ -140,7 +142,7 @@ nav a.on{background:linear-gradient(135deg,#2f6bff,#5aa9ff);color:#fff;box-shado
     <div class="side-b"><div id="who"></div></div>
   </aside>
   <div class="wrap">
-    <div class="tools"><div id="save" data-k="ok">บันทึกแล้ว ✓</div></div>
+    <div class="tools"><button class="btn pri" id="saveb">บันทึก</button><div id="save" data-k="ok">บันทึกแล้ว ✓</div></div>
         <main id="main"></main>
   </div>
 </div>
