@@ -1,8 +1,7 @@
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {getFirestore,collection,collectionGroup,doc,getDoc,setDoc,addDoc,deleteDoc,onSnapshot,arrayUnion,writeBatch} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {firebaseConfig} from "./firebase-config.js";
-const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
+const app=initializeApp(firebaseConfig),db=getFirestore(app);
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const baht=n=>(+n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -23,7 +22,7 @@ const PF=[['name','ชื่อโครงการ','list','names'],['agency',
 const XF=[['days','ขยาย (วัน)','number'],['reason','เหตุผล','text'],['date','วันที่อนุมัติ','date']];
 const IF=[['no','งวดที่','number'],['pct','% งาน','number'],['amount','จำนวนเงิน','number'],['dSubmit','วันที่ส่งเบิก','date'],['dPaid','วันที่ได้รับเงิน','date'],['status','สถานะ','select',IS],['note','หมายเหตุ','text']];
 const EF=[['date','วันที่','date'],['item','รายการ','text'],['cat','หมวด','select',CAT],['amount','จำนวนเงิน','number'],['method','วิธีจ่าย','select',MT],['payer','ผู้จ่าย','list','payers'],['payee','จ่ายให้ใคร','text'],['status','สถานะ','select',ES],['note','หมายเหตุ','text']];
-const S={role:'viewer',name:'',P:[],I:[],E:[],set:{},cur:null,loaded:false,f:{q:'',st:'',ag:''},ef:{cat:'',payer:'',m:'',from:'',to:''},un:[]};
+const S={role:'editor',name:'',P:[],I:[],E:[],set:{},cur:null,loaded:false,f:{q:'',st:'',ag:''},ef:{cat:'',payer:'',m:'',from:'',to:''},un:[]};
 const ro=()=>S.role!=='editor',stamp=()=>({updatedBy:S.name,updatedAt:new Date().toISOString()});
 const opts=(a,v)=>a.map(o=>`<option ${o===v?'selected':''}>${esc(o)}</option>`).join('');
 const badge=s=>`<span class="bd" style="background:${SC[ST.indexOf(s)]||'#6b7280'}">${esc(s)}</span>`;
@@ -39,18 +38,6 @@ const writeP=async(id,p)=>{await setDoc(doc(db,'projects',id),{...p,...stamp()},
  for(const[f,k]of[['name','names'],['agency','agencies']])if(p[f])await setDoc(doc(db,'settings','lists'),{[k]:arrayUnion(p[f])},{merge:true})};
 const writeS=(c,pid,id)=>async p=>{await setDoc(doc(db,'projects',pid,c,id),{...p,...stamp()},{merge:true});await setDoc(doc(db,'projects',pid),stamp(),{merge:true});
  if(p.payer)await setDoc(doc(db,'settings','lists'),{payers:arrayUnion(p.payer)},{merge:true})};
-// ---------- auth ----------
-const show=v=>{$('#login').classList.toggle('hide',v!=='login');$('#app').classList.toggle('hide',v!=='app')};
-$('#lf').addEventListener('submit',async e=>{e.preventDefault();$('#lerr').textContent='';
- try{await signInWithEmailAndPassword(auth,$('#em').value.trim(),$('#pw').value)}catch{$('#lerr').textContent='อีเมลหรือรหัสผ่านไม่ถูกต้อง'}});
-$('#out').onclick=()=>signOut(auth);
-onAuthStateChanged(auth,async u=>{S.un.forEach(f=>f());S.un=[];S.loaded=false;
- if(!u){show('login');return}
- let r=null;try{r=(await getDoc(doc(db,'users',u.email.toLowerCase()))).data()}catch(e){console.error(e)}
- if(!r){$('#lerr').textContent='บัญชีนี้ยังไม่ได้รับสิทธิ์ใช้งาน กรุณาติดต่อผู้ดูแล';await signOut(auth);return}
- S.role=r.role==='editor'?'editor':'viewer';S.name=r.name||u.email.split('@')[0];
- document.body.classList.toggle('ro',ro());$('#who').textContent=`${S.name} (${ro()?'ดูอย่างเดียว':'แก้ไขได้'})`;
- show('app');start();route()});
 function start(){const sn=(q,f)=>onSnapshot(q,f,e=>{console.error(e);setSt('err')});
  S.un=[sn(collection(db,'projects'),s=>{S.P=s.docs.map(d=>({...d.data(),id:d.id}));S.loaded=true;render()}),
  sn(collectionGroup(db,'installments'),s=>{S.I=s.docs.map(d=>({...d.data(),id:d.id,pid:d.ref.parent.parent.id}));render()}),
@@ -154,3 +141,9 @@ async function seed(){const bt=writeBatch(db),t=today(),sm={sample:true,...stamp
   [{pct:40,amount:2320000,dSubmit:add(t,-90),dPaid:add(t,-70),status:'ได้รับเงินแล้ว'},{pct:30,amount:1740000,dSubmit:add(t,-5),dPaid:'',status:'ส่งเบิกแล้ว'}],
   [{date:add(t,-100),item:'เหล็กเส้น',cat:'วัสดุก่อสร้าง',amount:620000,method:'เช็ค',payer:'สมชาย',payee:'บริษัทเหล็กตัวอย่าง',status:'จ่ายแล้ว'},{date:add(t,-15),item:'ค่าเช่ารถแบคโฮ',cat:'ค่าเครื่องจักร-ขนส่ง',amount:38000,method:'โอนเงิน',payer:'สมหญิง',payee:'ร้านเครื่องจักรตัวอย่าง',status:'จ่ายแล้ว'}]);
  await bt.commit()}
+// ---------- เริ่มทำงานทันที (ไม่มีหน้าล็อกอิน) ----------
+S.name=(localStorage.getItem('uname')||prompt('พิมพ์ชื่อของคุณ (ใช้แสดงว่าใครแก้ไขล่าสุด)')||'ไม่ระบุชื่อ').trim();
+localStorage.setItem('uname',S.name);
+const who=$('#who');who.textContent='👤 '+S.name;who.title='กดเพื่อเปลี่ยนชื่อ';who.style.cursor='pointer';
+who.onclick=()=>{const n=prompt('เปลี่ยนชื่อ',S.name);if(n&&n.trim()){S.name=n.trim();localStorage.setItem('uname',S.name);who.textContent='👤 '+S.name}};
+start();route();
